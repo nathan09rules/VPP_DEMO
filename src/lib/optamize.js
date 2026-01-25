@@ -1,32 +1,104 @@
-import { data } from "./data.js";
+import { data, ledger as ledgerStore } from "./data.js";
+import { get } from "svelte/store";
 
-export class optamize {
-    run() {
-        //THIS IS PURELY COMPUTATIONAL OPTAMIZATION
-
-        //steps:
-        //sort each loc by priority
-        //then desending from priority SORT by is loc.prod - loc.dem < 0 then put in deficit else surplus
-        //for each loc run index = optamize(loc)
-        //push index into ledger array
-
-        //finally data.ledger = ledger
+export class optimize {
+    static run() {
+        const result = this.optimizeRegions();
+        ledgerStore.set(result.ledger);
+        return result;
     }
 
-    optamize(loc) {
-        //Here we will try to find the best path to suply the deficit
-        //Do a BFS of 5 steps 
-        //if you find a souce with enough energy to supply then stop and consume
-        //else find the closest renewable and non renewable source 
-        //if closest renewable * 1.5 < closest non renewable then use renewable
-        //else use non renewable
-        //Now we know start and end pos
+    static optimizeRegions() {
+        const locs = data.loc;
+        if (!locs) return { ledger: [] };
 
-        //Then we find the optimal path using neighbours
-        //We do another 5 step BFS on the end node until we find a mains node we are connected to
-        //WE do a DFS exclusive to mains neighbours which are other mains since little mains
-        //Finally we do some math on the dist * wight * startenergy = endenergy
+        const ledger = [];
+        const lossPerStep = 0.005; // 0.5% loss per "connection"
 
-        //return {startid , endid , startenergy , endenergy , path : [node1 , node2 , ...]}
+        // Sort deficits by priority
+        let deficitIds = Object.keys(locs)
+            .filter(id => (locs[id].prop.dem - locs[id].prop.prod) > 0.1)
+            .sort((a, b) => (locs[b].prop.priority || 5) - (locs[a].prop.priority || 5));
+
+        // Get surplus sources
+        const surplusNodes = Object.keys(locs).filter(id => (locs[id].prop.prod - locs[id].prop.dem) > 0.1);
+
+        // Pass 1: Renewables
+        deficitIds.forEach(targetId => {
+            const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
+            if (currentDeficit > 0.1) {
+                this.transferEnergy(targetId, currentDeficit, true, surplusNodes, ledger, lossPerStep);
+            }
+        });
+
+        // Pass 2: Non-Renewables
+        deficitIds.forEach(targetId => {
+            const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
+            if (currentDeficit > 0.1) {
+                this.transferEnergy(targetId, currentDeficit, false, surplusNodes, ledger, lossPerStep);
+            }
+        });
+
+        return { ledger };
+    }
+
+    static transferEnergy(targetId, amount, onlyRenewable, surplusNodes, ledger, lossFactor) {
+        const target = data.loc[targetId];
+
+        // Simple BFS to find closest source in the grid
+        const sourceId = this.nearestSource(targetId, onlyRenewable, surplusNodes);
+        if (!sourceId) return;
+
+        const source = data.loc[sourceId];
+        const supply = Math.min(amount, source.prop.prod - source.prop.dem);
+
+        if (supply <= 0) return;
+
+        // Path is just start and end for this demo, or we can use the neighbors
+        // Let's create a simple path using neighbors if they exist
+        const path = this.findPath(targetId, sourceId);
+
+        // Update local prod/dem to reflect transfer (simulation)
+        // Note: In a real app we might not want to mutate original data directly without a clone
+        // but for the demo we'll just track it in the ledger.
+
+        ledger.push({
+            startid: sourceId,
+            endid: targetId,
+            startenergy: supply,
+            endenergy: supply * (1 - (path.length * lossFactor)),
+            path: path.map(id => data.loc[id].pos)
+        });
+    }
+
+    static nearestSource(startId, onlyRenewable, surplusNodes) {
+        let bestSource = null;
+        let minDist = Infinity;
+
+        surplusNodes.forEach(sId => {
+            const s = data.loc[sId];
+            const isRenewable = ['solar', 'wind', 'hydro', 'nuclear', 'biomass', 'geothermal'].includes(s.prop.type);
+
+            if (onlyRenewable && !isRenewable) return;
+            if (!onlyRenewable && isRenewable) return; // Pass 2 is for non-renewables
+
+            const dist = this.getDist(data.loc[startId].pos, s.pos);
+            if (dist < minDist) {
+                minDist = dist;
+                bestSource = sId;
+            }
+        });
+
+        return bestSource;
+    }
+
+    static findPath(startId, endId) {
+        // Very simple pathfinding: start -> end
+        // In a real grid we'd do BFS/Dijkstra
+        return [endId, startId];
+    }
+
+    static getDist(p1, p2) {
+        return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
     }
 }
