@@ -77,10 +77,10 @@ export class optimize {
 
         surplusNodes.forEach(sId => {
             const s = data.loc[sId];
-            const isRenewable = ['solar', 'wind', 'hydro', 'nuclear', 'biomass', 'geothermal'].includes(s.prop.type);
+            const isRenewable = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(s.prop.source_type);
 
             if (onlyRenewable && !isRenewable) return;
-            if (!onlyRenewable && isRenewable) return; // Pass 2 is for non-renewables
+            if (!onlyRenewable && isRenewable && s.prop.source_type !== 'thermal' && s.prop.source_type !== 'nuclear') return;
 
             const dist = this.getDist(data.loc[startId].pos, s.pos);
             if (dist < minDist) {

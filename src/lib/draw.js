@@ -1,6 +1,8 @@
 import { data, activeData, config, ledger } from "./data.js";
 import { get } from "svelte/store";
 
+let heatLayer = null;
+
 const typeMap = {
     solar: { code: "S", color: "#FFD700", renewable: true },
     wind: { code: "W", color: "#00BFFF", renewable: true },
@@ -22,15 +24,38 @@ const typeMap = {
 export class draw {
     constructor() {
         if (!data.map) return;
-        this.featureGroup = data.L.featureGroup().addTo(data.map);
-        this.pathGroup = data.L.featureGroup().addTo(data.map);
+        if (!data.featureGroup) data.featureGroup = data.L.featureGroup().addTo(data.map);
+        if (!data.pathGroup) data.pathGroup = data.L.featureGroup().addTo(data.map);
+
+        this.featureGroup = data.featureGroup;
+        this.pathGroup = data.pathGroup;
     }
+
 
     run() {
         if (!this.featureGroup) return;
         this.clearAll();
+        this.drawBorders();
         this.drawLocations();
         this.drawLedger();
+    }
+
+    async drawBorders() {
+        try {
+            const res = await fetch("/borders.geojson");
+            const geojson = await res.json();
+            data.L.geoJSON(geojson, {
+                style: {
+                    color: get(config).theme === 'dark' ? '#555' : '#888',
+                    weight: 2,
+                    fillOpacity: 0.1,
+                    interactive: false
+                }
+            }).addTo(this.featureGroup);
+
+        } catch (e) {
+            console.error("Borders failed:", e);
+        }
     }
 
     drawLocations() {
@@ -40,7 +65,35 @@ export class draw {
         this.drawMains(currentMode);
 
         // Draw location nodes and their connections
-        Object.values(data.loc).forEach(loc => {
+        const nodes = Object.values(data.loc);
+
+        if (currentMode === 'heatmap') {
+            const heatData = nodes.map(loc => {
+                const net = loc.prop.prod - loc.prop.dem;
+                // Normalize intensity: absolute net energy / 2000MW
+                const intensity = Math.min(1.0, Math.abs(net) / 2000);
+                return [loc.pos[0], loc.pos[1], intensity];
+            });
+
+            // @ts-ignore - leaflet.heat
+            if (window.L && window.L.heatLayer) {
+                // @ts-ignore
+                window.L.heatLayer(heatData, {
+                    radius: 35,
+                    blur: 20,
+                    maxZoom: 10,
+                    gradient: {
+                        0.2: 'blue',
+                        0.4: 'cyan',
+                        0.6: 'lime',
+                        0.8: 'yellow',
+                        1.0: 'red'
+                    }
+                }).addTo(this.featureGroup);
+            }
+        }
+
+        nodes.forEach(loc => {
             const net = loc.prop.prod - loc.prop.dem;
             const typeInfo = typeMap[loc.prop.type] || typeMap.power;
 
@@ -48,76 +101,63 @@ export class draw {
             if (currentMode === 'visual') {
                 color = typeInfo.color;
             } else if (currentMode === 'heatmap') {
-                // Mock heatmap logic: based on net energy
-                if (net > 500) color = "#00ff00";
-                else if (net > 0) color = "#aaff00";
-                else if (net > -500) color = "#ffaa00";
-                else color = "#ff0000";
+                color = net > 0 ? "#00ff00" : "#ff0000";
             } else {
-                // Default inspect mode coloring
                 if (net > 0) color = typeInfo.renewable ? "#00ff00" : "#ffa500";
                 if (net < 0) color = "#ff0000";
             }
 
-            // Fixed smaller size for all nodes
             const marker = data.L.circleMarker(loc.pos, {
-                radius: 6,
+                radius: currentMode === 'heatmap' ? 4 : 6,
                 fillColor: color,
                 color: "#fff",
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.9,
+                weight: currentMode === 'heatmap' ? 1 : 2,
+                opacity: currentMode === 'heatmap' ? 0.3 : 1,
+                fillOpacity: currentMode === 'heatmap' ? 0.3 : 0.9,
                 pane: 'markerPane'
             });
 
             marker.bindTooltip(loc.prop.name || "Unknown Location");
 
-            // Ensure click events work
-            marker.on('mousedown', (e) => {
-                data.L.DomEvent.stopPropagation(e);
-            });
-
             marker.on('click', (e) => {
                 data.L.DomEvent.stopPropagation(e);
-                activeData.set({
-                    ...loc.prop,
-                    lat: loc.pos[0],
-                    lng: loc.pos[1],
-                    id: loc.id
-                });
+                activeData.set(loc);
             });
 
             marker.addTo(this.featureGroup);
 
-            // Draw sublines (neighbor connections from sublines logic) - Enhanced visibility
-            loc.neighbours.forEach(nId => {
-                const other = data.loc[nId];
-                if (other) {
-                    data.L.polyline([loc.pos, other.pos], {
-                        color: "#333", // Darker color for better visibility
-                        weight: 3,     // Thicker lines
-                        opacity: 0.8,  // More opaque
-                        dashArray: '4, 4', // Dashed style to distinguish from mains
-                        interactive: false
-                    }).addTo(this.featureGroup);
-                }
-            });
+            if (currentMode !== 'heatmap') {
+                // Draw sublines (neighbor connections from sublines logic) - Enhanced visibility
+                loc.neighbours.forEach(nId => {
+                    const other = data.loc[nId];
+                    if (other) {
+                        data.L.polyline([loc.pos, other.pos], {
+                            color: "#333", // Darker color for better visibility
+                            weight: 3,     // Thicker lines
+                            opacity: 0.8,  // More opaque
+                            dashArray: '4, 4', // Dashed style to distinguish from mains
+                            interactive: false
+                        }).addTo(this.featureGroup);
+                    }
+                });
+            }
 
             // Draw connections from this location to mains
             this.connectToMains(loc);
         });
     }
 
-    drawMains(currentMode) {
+    drawMains(mode) {
+        const theme = get(config).theme;
         // Draw main junction nodes
         Object.values(data.mains).forEach(main => {
             const mainMarker = data.L.circleMarker([main.lat, main.lng], {
-                radius: 6, // Same size as locations, less dominant
-                fillColor: currentMode === 'dark' ? '#ff6b6b' : '#cc0000', // Softer red for mains
+                radius: 8,
+                fillColor: theme === 'dark' ? '#ff3333' : '#aa0000',
                 color: '#fff',
-                weight: 1, // Thinner border
+                weight: 2,
                 opacity: 1,
-                fillOpacity: 0.7, // Less opaque
+                fillOpacity: 0.9,
                 pane: 'markerPane'
             });
 
@@ -135,23 +175,35 @@ export class draw {
                     lng: main.lng,
                     type: 'main',
                     name: `Main Junction ${main.id}`,
-                    prod: 0,
-                    dem: 0,
-                    store: 0,
-                    priority: 1
+                    prop: {
+                        prod: 0,
+                        dem: 0,
+                        store: 0,
+                        priority: 1,
+                        type: 'main',
+                        source_type: 'infrastructure'
+                    }
                 });
             });
 
             mainMarker.addTo(this.featureGroup);
 
-            // Draw connections between main junctions
+            // Draw connections between main junctions - Make them bold and "main" like
             main.neighbors?.forEach(neighborId => {
                 const neighbor = data.mains[neighborId];
                 if (neighbor) {
                     data.L.polyline([[main.lat, main.lng], [neighbor.lat, neighbor.lng]], {
-                        color: currentMode === 'dark' ? '#ff6b6b' : '#cc0000', // Softer red for main connections
-                        weight: 2, // Thinner than before
-                        opacity: 0.6, // Less dominant
+                        color: theme === 'dark' ? '#ff3333' : '#aa0000',
+                        weight: 4, // Thicker for mains
+                        opacity: 0.8,
+                        interactive: false
+                    }).addTo(this.featureGroup);
+
+                    // Add a subtle glow for mains
+                    data.L.polyline([[main.lat, main.lng], [neighbor.lat, neighbor.lng]], {
+                        color: theme === 'dark' ? '#ff3333' : '#aa0000',
+                        weight: 8,
+                        opacity: 0.2,
                         interactive: false
                     }).addTo(this.featureGroup);
                 }
@@ -161,21 +213,23 @@ export class draw {
 
     connectToMains(loc) {
         // Find nearby mains and draw connections
+        const theme = get(config).theme;
         Object.values(data.mains).forEach(main => {
             const distance = Math.sqrt(Math.pow(loc.pos[0] - main.lat, 2) + Math.pow(loc.pos[1] - main.lng, 2));
 
-            // Only draw connection if reasonably close (adjust threshold as needed)
-            if (distance < 0.5) { // Adjust this threshold based on your data scale
+            // Only draw connection if reasonably close
+            if (distance < 0.8) { // Increased threshold slightly
                 data.L.polyline([loc.pos, [main.lat, main.lng]], {
-                    color: '#888', // Medium gray for location-to-main connections
-                    weight: 1.5,
-                    opacity: 0.5,
-                    dashArray: '2, 4', // Different dash pattern
+                    color: theme === 'dark' ? '#888' : '#444',
+                    weight: 2,
+                    opacity: 0.6,
+                    dashArray: '5, 5',
                     interactive: false
                 }).addTo(this.featureGroup);
             }
         });
     }
+
 
     drawLedger() {
         this.pathGroup.clearLayers();
@@ -187,10 +241,9 @@ export class draw {
 
     path(stepOrIndex) {
         let step;
+        const currentLedger = get(ledger);
 
-        // Handle both step object and index parameter
         if (typeof stepOrIndex === 'number') {
-            const currentLedger = get(ledger);
             if (stepOrIndex >= 0 && stepOrIndex < currentLedger.length) {
                 this.clearPaths();
                 step = currentLedger[stepOrIndex];
@@ -201,30 +254,29 @@ export class draw {
             step = stepOrIndex;
         }
 
-        console.log(step);
-        const isRenewable = data.loc[step.startid]?.prop.type && typeMap[data.loc[step.startid].prop.type]?.renewable;
+        if (!step || !step.path) return;
+
+        const node = data.loc[step.startid];
+        const sourceType = node?.prop?.source_type || node?.prop?.type;
+        const isRenewable = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(sourceType);
         const color = isRenewable ? "#2ecc71" : "#e74c3c";
 
-        // Create a highly visible path with glow effect
         const path = data.L.polyline(step.path, {
             color: color,
-            weight: 8,      // Very thick for maximum visibility
-            opacity: 1.0,   // Fully opaque
+            weight: 6,
+            opacity: 1.0,
             className: 'energy-path',
             interactive: false
         }).addTo(this.pathGroup);
 
-        // Add a glow/outline effect for even better visibility
         const glowPath = data.L.polyline(step.path, {
-            color: 'white',  // White glow around the path
-            weight: 12,      // Larger weight for glow effect
-            opacity: 0.6,    // Semi-transparent glow
+            color: 'white',
+            weight: 10,
+            opacity: 0.4,
             interactive: false
         }).addTo(this.pathGroup);
 
-        // Bring the main path to front
         path.bringToFront();
-
         return { path, glowPath };
     }
 

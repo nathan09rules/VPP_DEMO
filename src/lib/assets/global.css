@@ -45,6 +45,18 @@ body {
     pointer-events: auto;
 }
 
+/* Ensure dashboard overlay doesn't cover the map area */
+#ui button[aria-label="Close Dashboard"] {
+    pointer-events: auto;
+    z-index: 1001;
+}
+
+/* Make sure dashboard doesn't interfere with map rendering */
+#dashboard {
+    pointer-events: auto;
+    z-index: 2000;
+}
+
 .toggle {
     background-color: var(--primary-bg);
     border: 2px solid var(--border-color);
@@ -225,4 +237,138 @@ body {
 
 .leaflet-marker-pane circle {
     cursor: pointer !important;
+}
+
+#clock-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--glass-bg);
+    border: 3px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 20px;
+    box-shadow: 6px 6px 0px var(--border-color);
+    z-index: 1005;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 300px;
+    pointer-events: auto;
+}
+
+.clock-title {
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.clock-controls {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 4px;
+}
+
+.control-group span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.control-group input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+
+.graph-container {
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+}
+
+[data-theme="dark"] .graph-container {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.graph-container svg {
+    overflow: visible;
+}
+
+@media (max-width: 768px) {
+    #inspect {
+        width: calc(100% - 40px);
+        left: 20px;
+        bottom: 80px;
+        padding: 15px;
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+
+    #dashboard {
+        width: 100%;
+        right: -100%;
+        padding: 15px;
+    }
+
+    #dashboard.open {
+        right: 0;
+    }
+
+    #clock-container {
+        width: calc(100% - 40px);
+        min-width: unset;
+        top: 70px;
+        left: 20px;
+        transform: none;
+        padding: 8px 15px;
+    }
+
+    .clock-title {
+        font-size: 0.7rem;
+    }
+
+    .clock-controls {
+        gap: 10px;
+    }
+
+    #timeline {
+        gap: 8px;
+        height: 80px;
+        flex-wrap: wrap;
+        padding: 5px;
+    }
+
+    .toggle .in {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+    }
+
+    .mode-badge {
+        top: 10px;
+        left: 10px;
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    #dev {
+        top: 10px;
+        right: 10px;
+    }
+
+    #drop {
+        top: 60px;
+        right: 10px;
+    }
 }

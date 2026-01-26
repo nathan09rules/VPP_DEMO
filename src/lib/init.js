@@ -1,5 +1,6 @@
 import { data } from "./data.js";
 import { draw } from "./draw.js";
+import { simulation } from "./simulation.js";
 
 let Light;
 let Dark;
@@ -11,6 +12,10 @@ export const init = {
         try {
             const L = await import("leaflet");
             data.L = L.default || L;
+            if (typeof window !== "undefined") {
+                window.L = data.L;
+                await import("leaflet.heat");
+            }
 
             // Adjusted start view: Zoom 6 and centered more broadly
             data.map = data.L.map("map", {
@@ -41,19 +46,33 @@ export const init = {
 
             locData.features.forEach((f, i) => {
                 const id = `loc_${i}`;
+                const hourlyProd = f.properties.prod_hourly || Array(24).fill(0);
+                const hourlyDem = f.properties.dem_hourly || Array(24).fill(0);
+
                 data.loc[id] = {
                     id: id,
                     pos: [f.properties.lat, f.properties.lng],
                     prop: {
                         name: f.properties.name,
-                        prod: f.properties.prod || 0,
-                        dem: f.properties.dem || 0,
+                        prod: 0, // Set later
+                        dem: 0,  // Set later
+                        hourlyProd: hourlyProd,
+                        hourlyDem: hourlyDem,
                         store: f.properties.store || 0,
                         priority: f.properties.priority || 5,
-                        type: f.properties.sub_type || 'power'
+                        type: f.properties.sub_type || 'power',
+                        source_type: f.properties.source_type || 'thermal'
                     },
                     neighbours: []
                 };
+
+                // Apply simulation logic to get realistic profiles
+                const initialMonth = 0; // January
+                const profiles = simulation.getHourlyProfiles(data.loc[id], initialMonth);
+                data.loc[id].prop.hourlyProd = profiles.prod;
+                data.loc[id].prop.hourlyDem = profiles.dem;
+                data.loc[id].prop.prod = profiles.prod[12];
+                data.loc[id].prop.dem = profiles.dem[12];
             });
 
             const mainsRes = await fetch("/data.json");
