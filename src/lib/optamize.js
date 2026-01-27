@@ -56,7 +56,11 @@ export class optimize {
 
         // Path is just start and end for this demo, or we can use the neighbors
         // Let's create a simple path using neighbors if they exist
-        const path = this.findPath(targetId, sourceId);
+        const path = this.findPath(sourceId, targetId);
+
+        // Debug: Log the path to see what's happening
+        console.log(`Path from ${sourceId} to ${targetId}:`, path);
+        console.log(`Path coordinates:`, path.map(id => data.loc[id].pos));
 
         // Update local prod/dem to reflect transfer (simulation)
         // Note: In a real app we might not want to mutate original data directly without a clone
@@ -93,9 +97,63 @@ export class optimize {
     }
 
     static findPath(startId, endId) {
-        // Very simple pathfinding: start -> end
-        // In a real grid we'd do BFS/Dijkstra
-        return [endId, startId];
+        // BFS pathfinding through the grid network
+        if (startId === endId) return [startId];
+
+        const queue = [[startId]];
+        const visited = new Set([startId]);
+
+        while (queue.length > 0) {
+            const path = queue.shift();
+            const currentId = path[path.length - 1];
+            const currentNode = data.loc[currentId];
+
+            // Check all neighbors
+            for (const neighborId of currentNode.neighbours) {
+                if (neighborId === endId) {
+                    return [...path, neighborId];
+                }
+
+                if (!visited.has(neighborId)) {
+                    visited.add(neighborId);
+                    queue.push([...path, neighborId]);
+                }
+            }
+        }
+
+        // If no path found through local network, try extended BFS (10 steps)
+        // This allows finding longer network paths before falling back to direct
+        const startNode = data.loc[startId];
+        const endNode = data.loc[endId];
+
+        // If both nodes have neighbors, try extended BFS through the network
+        if (startNode.neighbours.length > 0 || endNode.neighbours.length > 0) {
+            // Extended BFS with 10-step limit to find longer network paths
+            const extendedQueue = [[startId]];
+            const extendedVisited = new Set([startId]);
+            let steps = 0;
+
+            while (extendedQueue.length > 0 && steps < 10) {
+                const extendedPath = extendedQueue.shift();
+                const currentExtendedId = extendedPath[extendedPath.length - 1];
+                const currentExtendedNode = data.loc[currentExtendedId];
+
+                for (const extendedNeighborId of currentExtendedNode.neighbours) {
+                    if (extendedNeighborId === endId) {
+                        return [...extendedPath, extendedNeighborId];
+                    }
+
+                    if (!extendedVisited.has(extendedNeighborId)) {
+                        extendedVisited.add(extendedNeighborId);
+                        extendedQueue.push([...extendedPath, extendedNeighborId]);
+                    }
+                }
+                steps++;
+            }
+        }
+
+        // Final fallback: direct path
+        return [startId, endId];
     }
 
     static getDist(p1, p2) {

@@ -84,55 +84,83 @@ export const init = {
         }
     },
 
-    // Improved grid logic - creates a clean grid without loops
+    // Connect all locations to main junctions
     createGrid() {
         const locs = Object.values(data.loc);
 
-        // Clear existing neighbours
+        // Connect all locations to main junctions
         locs.forEach(loc => {
             loc.neighbours = [];
+            Object.keys(data.mains).forEach(mainId => {
+                loc.neighbours.push(mainId);
+            });
+        });
+    },
+
+    // Connect all locations to nearest main junctions
+    connectAllToNearestMains(locs) {
+        // Clear any existing connections first
+        locs.forEach(loc => {
+            loc.neighbours = loc.neighbours.filter(id => data.mains[id]);
         });
 
-        // Create a grid-like structure to avoid loops
-        // Sort locations by position to create a logical grid
-        const sortedByLat = [...locs].sort((a, b) => a.pos[0] - b.pos[0]);
-        const sortedByLng = [...locs].sort((a, b) => a.pos[1] - b.pos[1]);
+        // Connect each location to its single nearest main junction
+        try {
+            locs.forEach(loc => {
+                let closestMain = null;
+                let minDistance = Infinity;
 
-        // Connect each location to its nearest neighbors in a grid pattern
+                // Find closest main junction
+                Object.values(data.mains).forEach(main => {
+                    const distance = Math.sqrt(Math.pow(loc.pos[0] - main.lat, 2) + Math.pow(loc.pos[1] - main.lng, 2));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestMain = main;
+                    }
+                });
+
+                // Connect to closest main junction
+                if (closestMain && !loc.neighbours.includes(closestMain.id)) {
+                    loc.neighbours.push(closestMain.id);
+                }
+            });
+        } catch (e) {
+            console.error("Connect all to nearest mains failed:", e);
+        }
+    },
+
+    // Add additional local connections for network redundancy
+    addLocalConnections(locs) {
         locs.forEach(loc => {
+            // Find nearest neighbors for local connectivity
             const candidates = [];
 
-            // Find nearest neighbors without creating loops
-            sortedByLat.forEach(other => {
+            locs.forEach(other => {
                 if (other.id === loc.id) return;
+                if (loc.neighbours.includes(other.id)) return; // Already connected
 
-                // Calculate distance
                 const distance = Math.sqrt(Math.pow(loc.pos[0] - other.pos[0], 2) + Math.pow(loc.pos[1] - other.pos[1], 2));
 
-                // Only add if it doesn't create a loop (simple check)
-                if (!loc.neighbours.includes(other.id) && !other.neighbours.includes(loc.id)) {
+                // Only consider reasonably close neighbors
+                if (distance < 0.8) {
                     candidates.push({ id: other.id, distance, node: other });
                 }
             });
 
-            // Sort by distance and take top 2-3 (reduced from 3 to minimize loops)
+            // Sort by distance and add up to 2 additional connections
             candidates.sort((a, b) => a.distance - b.distance);
-            const connections = candidates.slice(0, 2).map(c => c.id); // Reduced to 2 connections max
+            const newConnections = candidates.slice(0, 2).map(c => c.id);
 
-            // Add connections
-            loc.neighbours.push(...connections);
-
-            // Add reciprocal connections
-            connections.forEach(connId => {
-                const connNode = data.loc[connId];
-                if (connNode && !connNode.neighbours.includes(loc.id)) {
-                    connNode.neighbours.push(loc.id);
+            newConnections.forEach(connId => {
+                if (!loc.neighbours.includes(connId)) {
+                    loc.neighbours.push(connId);
+                    const connNode = data.loc[connId];
+                    if (connNode && !connNode.neighbours.includes(loc.id)) {
+                        connNode.neighbours.push(loc.id);
+                    }
                 }
             });
         });
-
-        // Post-process to remove any remaining loops
-        this.removeLoops();
     },
 
     // Helper function to remove loops from the network

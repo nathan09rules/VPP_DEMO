@@ -149,14 +149,22 @@
         }
     }
 
-    // Auto-optimize when data changes
+    // Auto-optimize only when user manually changes prod/dem values, not when clicking nodes
+    let lastProd = $state(0);
+    let lastDem = $state(0);
+
     $effect(() => {
-        // Access prod/dem to trigger effect
+        // Only trigger optimization if the user manually changed values, not from node clicks
         if (
             $activeData &&
-            ($activeData.prop.prod !== undefined ||
-                $activeData.prop.dem !== undefined)
+            ($activeData.prop.prod !== lastProd ||
+                $activeData.prop.dem !== lastDem)
         ) {
+            // Update tracking values
+            lastProd = $activeData.prop.prod;
+            lastDem = $activeData.prop.dem;
+
+            // Only run optimization if values actually changed from user input
             optimize.run();
             init.refresh();
         }

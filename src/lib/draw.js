@@ -202,7 +202,7 @@ export class draw {
                     // Add a subtle glow for mains
                     data.L.polyline([[main.lat, main.lng], [neighbor.lat, neighbor.lng]], {
                         color: theme === 'dark' ? '#ff3333' : '#aa0000',
-                        weight: 8,
+                        weight: 6,
                         opacity: 0.2,
                         interactive: false
                     }).addTo(this.featureGroup);
@@ -232,11 +232,14 @@ export class draw {
 
 
     drawLedger() {
-        this.pathGroup.clearLayers();
         const currentLedger = get(ledger);
-        currentLedger.forEach(step => {
-            this.path(step);
-        });
+        // Only clear and draw paths if there are ledger entries
+        if (currentLedger.length > 0) {
+            this.pathGroup.clearLayers();
+            currentLedger.forEach(step => {
+                this.path(step);
+            });
+        }
     }
 
     path(stepOrIndex) {
