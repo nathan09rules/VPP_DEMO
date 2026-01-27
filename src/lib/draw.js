@@ -127,11 +127,11 @@ export class draw {
             marker.addTo(this.featureGroup);
 
             if (currentMode !== 'heatmap') {
-                // Draw sublines (neighbor connections from sublines logic) - Enhanced visibility
+                // Draw connections to main junctions only
                 loc.neighbours.forEach(nId => {
-                    const other = data.loc[nId];
+                    const other = data.mains[nId];
                     if (other) {
-                        data.L.polyline([loc.pos, other.pos], {
+                        data.L.polyline([loc.pos, [other.lat, other.lng]], {
                             color: "#333", // Darker color for better visibility
                             weight: 3,     // Thicker lines
                             opacity: 0.8,  // More opaque
