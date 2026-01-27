@@ -234,15 +234,6 @@
         </button>
     </div>
 
-    <div id="drop">
-        <button class="toggle" title="Settings">
-            <div class="in">⚙</div>
-        </button>
-        <button class="toggle" title="Search">
-            <div class="in">S</div>
-        </button>
-    </div>
-
     {#if $activeData}
         <div id="inspect">
             <div
@@ -540,13 +531,12 @@
             style="position: fixed; bottom: 20px; left: 10px;"
         >
             {activeIndex === -1
-                ? "OVERVIEW"
-                : `STEP ${activeIndex + 1}/${$ledger.length} ⮕`}
+                ? "STEPS"
+                : `STEP ${activeIndex + 1}/${$ledger.length} `}
             {#if activeIndex !== -1}
                 <span
                     style="margin-left: 10px; font-size: 0.8rem; opacity: 0.7; "
                 >
-                    (Moving {activeIndex > 0 ? "Forward" : "Start"})
                 </span>
             {/if}
         </div>
