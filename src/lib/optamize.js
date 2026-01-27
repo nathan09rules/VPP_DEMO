@@ -23,10 +23,14 @@ export class optimize {
         // Get surplus sources
         const surplusNodes = Object.keys(locs).filter(id => (locs[id].prop.prod - locs[id].prop.dem) > 0.1);
 
+        console.log('Deficit nodes:', deficitIds);
+        console.log('Surplus nodes:', surplusNodes);
+
         // Pass 1: Renewables
         deficitIds.forEach(targetId => {
             const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
             if (currentDeficit > 0.1) {
+                console.log(`Processing deficit node ${targetId} with deficit ${currentDeficit}`);
                 this.transferEnergy(targetId, currentDeficit, true, surplusNodes, ledger, lossPerStep);
             }
         });
@@ -35,10 +39,12 @@ export class optimize {
         deficitIds.forEach(targetId => {
             const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
             if (currentDeficit > 0.1) {
+                console.log(`Processing deficit node ${targetId} with deficit ${currentDeficit} (non-renewable)`);
                 this.transferEnergy(targetId, currentDeficit, false, surplusNodes, ledger, lossPerStep);
             }
         });
 
+        console.log('Final ledger:', ledger);
         return { ledger };
     }
 
@@ -60,18 +66,18 @@ export class optimize {
 
         // Debug: Log the path to see what's happening
         console.log(`Path from ${sourceId} to ${targetId}:`, path);
-        console.log(`Path coordinates:`, path.map(id => data.loc[id].pos));
-
-        // Update local prod/dem to reflect transfer (simulation)
-        // Note: In a real app we might not want to mutate original data directly without a clone
-        // but for the demo we'll just track it in the ledger.
 
         ledger.push({
             startid: sourceId,
             endid: targetId,
             startenergy: supply,
             endenergy: supply * (1 - (path.length * lossFactor)),
-            path: path.map(id => data.loc[id].pos)
+            path: path.map(id => {
+                const node = data.loc[id] || data.mains[id];
+                if (!node) return [0, 0];
+                if (node.pos) return node.pos;
+                return [node.lat, node.lng];
+            })
         });
     }
 
@@ -98,7 +104,7 @@ export class optimize {
 
     static findPath(startId, endId) {
         // BFS pathfinding through the grid network
-        if (startId === endId) return [startId];
+        if (startId == endId) return [startId];
 
         const queue = [[startId]];
         const visited = new Set([startId]);
@@ -106,11 +112,12 @@ export class optimize {
         while (queue.length > 0) {
             const path = queue.shift();
             const currentId = path[path.length - 1];
-            const currentNode = data.loc[currentId];
+            const currentNode = data.loc[currentId] || data.mains[currentId];
+            if (!currentNode) continue;
 
-            // Check all neighbors
-            for (const neighborId of currentNode.neighbours) {
-                if (neighborId === endId) {
+            const neighbors = currentNode.neighbours || currentNode.neighbors || [];
+            for (const neighborId of neighbors) {
+                if (neighborId == endId) {
                     return [...path, neighborId];
                 }
 
@@ -121,31 +128,27 @@ export class optimize {
             }
         }
 
-        // If no path found through local network, try extended BFS (10 steps)
-        // This allows finding longer network paths before falling back to direct
+        // If no path found through local network, try extended BFS (15 steps)
         const startNode = data.loc[startId];
-        const endNode = data.loc[endId];
-
-        // If both nodes have neighbors, try extended BFS through the network
-        if (startNode.neighbours.length > 0 || endNode.neighbours.length > 0) {
-            // Extended BFS with 10-step limit to find longer network paths
+        if (startNode && (startNode.neighbours.length > 0 || (startNode.neighbors && startNode.neighbors.length > 0))) {
             const extendedQueue = [[startId]];
             const extendedVisited = new Set([startId]);
             let steps = 0;
 
-            while (extendedQueue.length > 0 && steps < 10) {
+            while (extendedQueue.length > 0 && steps < 15) {
                 const extendedPath = extendedQueue.shift();
-                const currentExtendedId = extendedPath[extendedPath.length - 1];
-                const currentExtendedNode = data.loc[currentExtendedId];
+                const currentId = extendedPath[extendedPath.length - 1];
+                const node = data.loc[currentId] || data.mains[currentId];
+                if (!node) continue;
 
-                for (const extendedNeighborId of currentExtendedNode.neighbours) {
-                    if (extendedNeighborId === endId) {
-                        return [...extendedPath, extendedNeighborId];
+                const neighbors = node.neighbours || node.neighbors || [];
+                for (const neighborId of neighbors) {
+                    if (neighborId == endId) {
+                        return [...extendedPath, neighborId];
                     }
-
-                    if (!extendedVisited.has(extendedNeighborId)) {
-                        extendedVisited.add(extendedNeighborId);
-                        extendedQueue.push([...extendedPath, extendedNeighborId]);
+                    if (!extendedVisited.has(neighborId)) {
+                        extendedVisited.add(neighborId);
+                        extendedQueue.push([...extendedPath, neighborId]);
                     }
                 }
                 steps++;

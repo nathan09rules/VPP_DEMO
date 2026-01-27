@@ -140,6 +140,7 @@
 
     async function nextStep() {
         const currentLedger = get(ledger);
+        console.log(currentLedger);
         if (activeIndex < currentLedger.length - 1) {
             activeIndex++;
             if (data.map && data.L) {
@@ -534,13 +535,16 @@
     </div>
 
     <div id="timeline">
-        <div class="step-indicator">
+        <div
+            class="step-indicator"
+            style="position: fixed; bottom: 20px; left: 10px;"
+        >
             {activeIndex === -1
                 ? "OVERVIEW"
                 : `STEP ${activeIndex + 1}/${$ledger.length} ⮕`}
             {#if activeIndex !== -1}
                 <span
-                    style="margin-left: 10px; font-size: 0.8rem; opacity: 0.7;"
+                    style="margin-left: 10px; font-size: 0.8rem; opacity: 0.7; "
                 >
                     (Moving {activeIndex > 0 ? "Forward" : "Start"})
                 </span>

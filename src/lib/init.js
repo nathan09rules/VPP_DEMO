@@ -41,7 +41,7 @@ export const init = {
 
     async load() {
         try {
-            const locRes = await fetch("/loactions.geojson");
+            const locRes = await fetch("/locations.geojson");
             const locData = await locRes.json();
 
             locData.features.forEach((f, i) => {
@@ -110,6 +110,12 @@ export const init = {
             // Connect to closest main junction
             if (closestMain) {
                 loc.neighbours.push(closestMain.id);
+
+                // Bidirectional: connect main back to loc for pathfinding
+                if (!closestMain.neighbors) closestMain.neighbors = [];
+                if (!closestMain.neighbors.includes(loc.id)) {
+                    closestMain.neighbors.push(loc.id);
+                }
             }
         });
     },

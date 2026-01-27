@@ -79,8 +79,8 @@ export class draw {
             if (window.L && window.L.heatLayer) {
                 // @ts-ignore
                 window.L.heatLayer(heatData, {
-                    radius: 35,
-                    blur: 20,
+                    radius: 80,
+                    blur: 10,
                     maxZoom: 10,
                     gradient: {
                         0.2: 'blue',
@@ -108,7 +108,7 @@ export class draw {
             }
 
             const marker = data.L.circleMarker(loc.pos, {
-                radius: currentMode === 'heatmap' ? 4 : 6,
+                radius: currentMode === 'heatmap' ? 3 : 5,
                 fillColor: color,
                 color: "#fff",
                 weight: currentMode === 'heatmap' ? 1 : 2,
@@ -152,7 +152,7 @@ export class draw {
         // Draw main junction nodes
         Object.values(data.mains).forEach(main => {
             const mainMarker = data.L.circleMarker([main.lat, main.lng], {
-                radius: 8,
+                radius: 6,
                 fillColor: theme === 'dark' ? '#ff3333' : '#aa0000',
                 color: '#fff',
                 weight: 2,
@@ -194,7 +194,7 @@ export class draw {
                 if (neighbor) {
                     data.L.polyline([[main.lat, main.lng], [neighbor.lat, neighbor.lng]], {
                         color: theme === 'dark' ? '#ff3333' : '#aa0000',
-                        weight: 4, // Thicker for mains
+                        weight: 2, // Thinner for mains
                         opacity: 0.8,
                         interactive: false
                     }).addTo(this.featureGroup);
@@ -202,7 +202,7 @@ export class draw {
                     // Add a subtle glow for mains
                     data.L.polyline([[main.lat, main.lng], [neighbor.lat, neighbor.lng]], {
                         color: theme === 'dark' ? '#ff3333' : '#aa0000',
-                        weight: 6,
+                        weight: 4,
                         opacity: 0.2,
                         interactive: false
                     }).addTo(this.featureGroup);
