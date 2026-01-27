@@ -20,10 +20,12 @@ export const data = {
         mode: 'inspect', // inspect, visual, heatmap
     }),
     featureGroup: null,
-    pathGroup: null
+    pathGroup: null,
+    activeIndex: writable(-1)
 };
 
 export const activeData = data.active;
 export const config = data.config;
 export const ledger = data.ledger;
 export const time = data.time;
+export const activeIndex = data.activeIndex;

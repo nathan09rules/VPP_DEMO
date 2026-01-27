@@ -34,7 +34,7 @@ export class draw {
 
     run() {
         if (!this.featureGroup) return;
-        this.clearAll();
+        this.clearAll(); // This clears both featureGroup and pathGroup
         this.drawBorders();
         this.drawLocations();
         this.drawLedger();
@@ -126,7 +126,7 @@ export class draw {
 
             marker.addTo(this.featureGroup);
 
-            if (currentMode !== 'heatmap') {
+            if (currentMode !== 'heatmap' && get(data.activeIndex) !== -2) {
                 // Draw connections to main junctions only
                 loc.neighbours.forEach(nId => {
                     const other = data.mains[nId];
@@ -142,8 +142,10 @@ export class draw {
                 });
             }
 
-            // Draw connections from this location to mains
-            this.connectToMains(loc);
+            // Only draw secondary connections if not in focused inspect mode
+            if (get(data.activeIndex) !== -2) {
+                this.connectToMains(loc);
+            }
         });
     }
 
@@ -233,12 +235,25 @@ export class draw {
 
     drawLedger() {
         const currentLedger = get(ledger);
-        // Only clear and draw paths if there are ledger entries
-        if (currentLedger.length > 0) {
+        const activeIdx = get(data.activeIndex);
+
+        // If index is -2, it means explicit "hide paths" mode (e.g. initial inspect)
+        if (activeIdx === -2) {
             this.pathGroup.clearLayers();
-            currentLedger.forEach(step => {
-                this.path(step);
-            });
+            return;
+        }
+
+        if (activeIdx === -1) {
+            // Overview: Show all paths
+            if (currentLedger.length > 0) {
+                this.pathGroup.clearLayers();
+                currentLedger.forEach(step => {
+                    this.path(step);
+                });
+            }
+        } else {
+            // Single step: Only draw the active step
+            this.path(activeIdx);
         }
     }
 
@@ -259,10 +274,10 @@ export class draw {
 
         if (!step || !step.path) return;
 
+        // Find the node to check if it's renewable
         const node = data.loc[step.startid];
-        const sourceType = node?.prop?.source_type || node?.prop?.type;
-        const isRenewable = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(sourceType);
-        const color = isRenewable ? "#2ecc71" : "#e74c3c";
+        const isRenewable = node?.prop?.renewable || false;
+        const color = isRenewable ? "#2ecc71" : "#f39c12"; // Green for renewable, Orange for non
 
         const path = data.L.polyline(step.path, {
             color: color,

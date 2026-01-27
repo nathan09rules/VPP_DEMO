@@ -1,7 +1,14 @@
 <script>
     import { onMount } from "svelte";
     import { get, writable } from "svelte/store";
-    import { data, activeData, config, ledger, time } from "$lib/data.js";
+    import {
+        data,
+        activeData,
+        config,
+        ledger,
+        time,
+        activeIndex,
+    } from "$lib/data.js";
     import { init } from "$lib/init.js";
     import { optimize } from "$lib/optamize.js";
     import { draw } from "$lib/draw.js";
@@ -11,7 +18,7 @@
     let theme = $state("light");
     let isAdvanced = $state(true);
     let isDashboardOpen = $state(false);
-    let activeIndex = $state(-1);
+    let animationSession = $state(0);
 
     const modes = ["inspect", "visual", "heatmap"];
     let modeIndex = 0;
@@ -102,35 +109,42 @@
     }
 
     async function runOptimization() {
+        // Cancel any existing animation
+        animationSession++;
+        const currentSession = animationSession;
+
         optimize.run();
         init.refresh();
 
         const currentLedger = get(ledger);
         if (currentLedger.length > 0) {
-            activeIndex = -1;
+            activeIndex.set(-1);
             init.refresh();
 
             currentLedger.forEach((step, index) => {
                 setTimeout(() => {
+                    // Only continue if this is still the active session
+                    if (currentSession !== animationSession) return;
+
                     if (data.map && data.L) {
                         const renderer = new draw();
                         renderer.path(index);
-                        activeIndex = index;
+                        activeIndex.set(index);
                     }
-                }, 100 * index); // 0.1s delay between steps as requested
+                }, 100 * index);
             });
         }
     }
 
     async function previousStep() {
-        if (activeIndex > 0) {
-            activeIndex--;
+        if ($activeIndex > 0) {
+            activeIndex.set($activeIndex - 1);
             if (data.map && data.L) {
                 const renderer = new draw();
-                renderer.path(activeIndex);
+                renderer.path($activeIndex);
             }
         } else {
-            activeIndex = -1;
+            activeIndex.set(-1);
             if (data.map && data.L) {
                 const renderer = new draw();
                 renderer.drawLedger(); // Show all paths when at beginning
@@ -140,33 +154,51 @@
 
     async function nextStep() {
         const currentLedger = get(ledger);
-        console.log(currentLedger);
-        if (activeIndex < currentLedger.length - 1) {
-            activeIndex++;
+        if ($activeIndex < currentLedger.length - 1) {
+            activeIndex.set($activeIndex + 1);
             if (data.map && data.L) {
                 const renderer = new draw();
-                renderer.path(activeIndex);
+                renderer.path($activeIndex);
             }
         }
     }
 
     // Auto-optimize only when user manually changes prod/dem values, not when clicking nodes
+    let lastActiveId = $state(null);
     let lastProd = $state(0);
     let lastDem = $state(0);
 
     $effect(() => {
-        // Only trigger optimization if the user manually changed values, not from node clicks
-        if (
-            $activeData &&
-            ($activeData.prop.prod !== lastProd ||
-                $activeData.prop.dem !== lastDem)
-        ) {
-            // Update tracking values
+        if (!$activeData) {
+            lastActiveId = null;
+            return;
+        }
+
+        // If we just clicked/switched to a new node, don't re-optimize.
+        // Also clear paths to focus on the node name/details as requested.
+        if ($activeData.id !== lastActiveId) {
+            // Cancel any running animation
+            animationSession++;
+
+            lastActiveId = $activeData.id;
             lastProd = $activeData.prop.prod;
             lastDem = $activeData.prop.dem;
 
-            // Only run optimization if values actually changed from user input
+            activeIndex.set(-2); // Hidden mode
+            init.refresh();
+            return;
+        }
+
+        // If it's the same node but values were manually changed, then optimize
+        if (
+            $activeData.prop.prod !== lastProd ||
+            $activeData.prop.dem !== lastDem
+        ) {
+            lastProd = $activeData.prop.prod;
+            lastDem = $activeData.prop.dem;
             optimize.run();
+            // After manual change, show the new overview
+            activeIndex.set(-1);
             init.refresh();
         }
     });
@@ -241,7 +273,7 @@
             >
                 <div style="display: flex; flex-direction: column;">
                     <h2 id="name" style="margin: 0;">
-                        {$activeData.name || "Location"}
+                        {$activeData.prop.name || "Location"}
                     </h2>
                     <span style="font-size: 0.8rem; opacity: 0.7;"
                         >{$activeData.prop.source_type.toUpperCase()} / {$activeData.prop.type.toUpperCase()}</span
@@ -530,10 +562,10 @@
             class="step-indicator"
             style="position: fixed; bottom: 20px; left: 10px;"
         >
-            {activeIndex === -1
+            {$activeIndex === -1 || $activeIndex === -2
                 ? "STEPS"
-                : `STEP ${activeIndex + 1}/${$ledger.length} `}
-            {#if activeIndex !== -1}
+                : `STEP ${$activeIndex + 1}/${$ledger.length} `}
+            {#if $activeIndex >= 0}
                 <span
                     style="margin-left: 10px; font-size: 0.8rem; opacity: 0.7; "
                 >
