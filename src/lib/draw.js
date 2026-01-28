@@ -103,12 +103,13 @@ export class draw {
             } else if (currentMode === 'heatmap') {
                 color = net > 0 ? "#00ff00" : "#ff0000";
             } else {
-                if (net > 0) color = typeInfo.renewable ? "#00ff00" : "#ffa500";
-                if (net < 0) color = "#ff0000";
+                const isRenewable = typeInfo.renewable || ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(loc.prop.source_type);
+                if (net > 0) color = isRenewable ? "#2ecc71" : "#e74c3c";
+                if (net < 0) color = "#ca794eff";
             }
 
             const marker = data.L.circleMarker(loc.pos, {
-                radius: currentMode === 'heatmap' ? 3 : 5,
+                radius: currentMode === 'heatmap' ? 6 : 6,
                 fillColor: color,
                 color: "#fff",
                 weight: currentMode === 'heatmap' ? 1 : 2,
@@ -276,8 +277,13 @@ export class draw {
 
         // Find the node to check if it's renewable
         const node = data.loc[step.startid];
-        const isRenewable = node?.prop?.renewable || false;
-        const color = isRenewable ? "#2ecc71" : "#f39c12"; // Green for renewable, Orange for non
+        const typeInfo = typeMap[node?.prop?.type] || typeMap.power;
+
+        // Check if renewable based on typeMap OR the explicit source_type
+        const renewableTypes = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'];
+        const isRenewable = typeInfo.renewable || renewableTypes.includes(node?.prop?.source_type);
+
+        const color = isRenewable ? "#2ecc71" : "#e74c3c"; // Green for renewable, Red for non-renewable
 
         const path = data.L.polyline(step.path, {
             color: color,
