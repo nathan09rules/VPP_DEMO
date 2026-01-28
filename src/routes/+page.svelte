@@ -79,10 +79,19 @@
                 node.prop.dem = node.prop.hourlyDem[next.hour];
             });
 
+            // Update fast tracking values so effect doesn't trigger "manual" optimization
+            if (get(activeData)) {
+                lastProd = get(activeData).prop.prod;
+                lastDem = get(activeData).prop.dem;
+            }
+
             return next;
         });
 
-        // Refresh visualization
+        // Run optimization to update math (ledger) but don't change view mode
+        optimize.run();
+
+        // Refresh visualization but don't draw paths
         init.refresh();
         // If we have an active node, trigger a refresh of its data
         if ($activeData) {

@@ -135,26 +135,22 @@ export class draw {
 
             marker.addTo(this.featureGroup);
 
-            if (currentMode !== 'heatmap' && get(data.activeIndex) !== -2) {
-                // Draw connections to main junctions only
-                loc.neighbours.forEach(nId => {
-                    const other = data.mains[nId];
-                    if (other) {
-                        data.L.polyline([loc.pos, [other.lat, other.lng]], {
-                            color: "#333", // Darker color for better visibility
-                            weight: 3,     // Thicker lines
-                            opacity: 0.8,  // More opaque
-                            dashArray: '4, 4', // Dashed style to distinguish from mains
-                            interactive: false
-                        }).addTo(this.featureGroup);
-                    }
-                });
-            }
+            // Draw connections to main junctions
+            loc.neighbours.forEach(nId => {
+                const other = data.mains[nId];
+                if (other) {
+                    data.L.polyline([loc.pos, [other.lat, other.lng]], {
+                        color: theme === 'dark' ? '#888' : '#333',
+                        weight: 2.5,
+                        opacity: 0.7,
+                        dashArray: '4, 4',
+                        interactive: false
+                    }).addTo(this.featureGroup);
+                }
+            });
 
-            // Only draw secondary connections if not in focused inspect mode
-            if (get(data.activeIndex) !== -2) {
-                this.connectToMains(loc);
-            }
+            // Always draw secondary connections
+            this.connectToMains(loc);
         });
     }
 
@@ -229,11 +225,11 @@ export class draw {
             const distance = Math.sqrt(Math.pow(loc.pos[0] - main.lat, 2) + Math.pow(loc.pos[1] - main.lng, 2));
 
             // Only draw connection if reasonably close
-            if (distance < 0.8) { // Increased threshold slightly
+            if (distance < 0.8) {
                 data.L.polyline([loc.pos, [main.lat, main.lng]], {
-                    color: theme === 'dark' ? '#888' : '#444',
-                    weight: 2,
-                    opacity: 0.6,
+                    color: theme === 'dark' ? '#666' : '#999',
+                    weight: 1.5,
+                    opacity: 0.5,
                     dashArray: '5, 5',
                     interactive: false
                 }).addTo(this.featureGroup);
