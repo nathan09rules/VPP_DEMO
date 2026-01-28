@@ -19,6 +19,7 @@
     let isAdvanced = $state(true);
     let isDashboardOpen = $state(false);
     let animationSession = $state(0);
+    let innerWidth;
 
     const modes = ["inspect", "visual", "heatmap"];
     let modeIndex = 0;
@@ -287,6 +288,11 @@
     />
 </svelte:head>
 
+<svelte:window
+    on:resize={() => (innerWidth = window.innerWidth)}
+    on:load={() => (innerWidth = window.innerWidth)}
+/>
+
 <div id="map"></div>
 
 {#if $config.mode === "visual"}
@@ -334,9 +340,10 @@
     </button>
 
     <!-- Map Legend -->
-    <div
-        id="map-legend"
-        style="
+    {#if !$activeData || innerWidth > 900}
+        <div
+            id="map-legend"
+            style="
             position: fixed; 
             bottom: 90px; 
             right: 20px; 
@@ -352,107 +359,108 @@
             min-width: 140px;
             backdrop-filter: blur(10px);
         "
-    >
-        <div
-            style="font-weight: bold; margin-bottom: 8px; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;"
         >
-            LEGEND: {$config.mode.toUpperCase()}
-        </div>
+            <div
+                style="font-weight: bold; margin-bottom: 8px; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;"
+            >
+                LEGEND: {$config.mode.toUpperCase()}
+            </div>
 
-        {#if $config.mode === "heatmap"}
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
+            {#if $config.mode === "heatmap"}
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #4444ff; border-radius: 3px;"
+                        ></div>
+                        <span>Surplus (MW)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #ff4444; border-radius: 3px;"
+                        ></div>
+                        <span>Deficit (MW)</span>
+                    </div>
                     <div
-                        style="width: 12px; height: 12px; background: #4444ff; border-radius: 3px;"
-                    ></div>
-                    <span>Surplus (MW)</span>
+                        style="display: flex; align-items: center; gap: 8px; opacity: 0.7; font-size: 0.6rem; margin-top: 4px;"
+                    >
+                        <span>* Intensity varies with scale</span>
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #ff4444; border-radius: 3px;"
-                    ></div>
-                    <span>Deficit (MW)</span>
+            {:else if $config.mode === "visual"}
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #FFD700; border-radius: 50%;"
+                        ></div>
+                        <span>Power Plant</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #00BFFF; border-radius: 50%;"
+                        ></div>
+                        <span>Police Station</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #FF0000; border-radius: 50%;"
+                        ></div>
+                        <span>Hospital</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #2E8B57; border-radius: 50%;"
+                        ></div>
+                        <span>Financial</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #9370DB; border-radius: 50%;"
+                        ></div>
+                        <span>University</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; border: 2px dashed #666; height: 0; width: 14px;"
+                        ></div>
+                        <span>Sub-lines</span>
+                    </div>
                 </div>
-                <div
-                    style="display: flex; align-items: center; gap: 8px; opacity: 0.7; font-size: 0.6rem; margin-top: 4px;"
-                >
-                    <span>* Intensity varies with scale</span>
+            {:else}
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #2ecc71; border-radius: 50%;"
+                        ></div>
+                        <span>Renewable Surplus</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #e74c3c; border-radius: 50%;"
+                        ></div>
+                        <span>Non-Renewable Surplus</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #ca794eff; border-radius: 50%;"
+                        ></div>
+                        <span>Power Deficit</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #2ecc71; height: 2px;"
+                        ></div>
+                        <span>Renewable Flow</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 12px; height: 12px; background: #e74c3c; height: 2px;"
+                        ></div>
+                        <span>Non-Renewable Flow</span>
+                    </div>
                 </div>
-            </div>
-        {:else if $config.mode === "visual"}
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #FFD700; border-radius: 50%;"
-                    ></div>
-                    <span>Power Plant</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #00BFFF; border-radius: 50%;"
-                    ></div>
-                    <span>Police Station</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #FF0000; border-radius: 50%;"
-                    ></div>
-                    <span>Hospital</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #2E8B57; border-radius: 50%;"
-                    ></div>
-                    <span>Financial</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #9370DB; border-radius: 50%;"
-                    ></div>
-                    <span>University</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; border: 2px dashed #666; height: 0; width: 14px;"
-                    ></div>
-                    <span>Sub-lines</span>
-                </div>
-            </div>
-        {:else}
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #2ecc71; border-radius: 50%;"
-                    ></div>
-                    <span>Renewable Surplus</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #e74c3c; border-radius: 50%;"
-                    ></div>
-                    <span>Non-Renewable Surplus</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #ca794eff; border-radius: 50%;"
-                    ></div>
-                    <span>Power Deficit</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #2ecc71; height: 2px;"
-                    ></div>
-                    <span>Renewable Flow</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div
-                        style="width: 12px; height: 12px; background: #e74c3c; height: 2px;"
-                    ></div>
-                    <span>Non-Renewable Flow</span>
-                </div>
-            </div>
-        {/if}
-    </div>
+            {/if}
+        </div>
+    {/if}
 
     <div id="dev">
         <button class="toggle" onclick={toggleTheme}>
@@ -473,7 +481,7 @@
                         {$activeData.prop.name || "Location"}
                     </h2>
                     <span style="font-size: 0.8rem; opacity: 0.7;"
-                        >{$activeData.prop.source_type.toUpperCase()} / {$activeData.prop.type.toUpperCase()}</span
+                        >{$activeData.prop.type.toUpperCase()}</span
                     >
                 </div>
                 <button
