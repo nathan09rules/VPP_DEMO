@@ -40,6 +40,8 @@
 
     onMount(async () => {
         await init.run();
+        // Populate ledger on mount
+        optimize.run();
     });
 
     function toggleTheme() {
@@ -113,6 +115,7 @@
         animationSession++;
         const currentSession = animationSession;
 
+        // Run optimization to populate ledger
         optimize.run();
         init.refresh();
 
@@ -134,6 +137,56 @@
                 }, 100 * index);
             });
         }
+    }
+
+    function getTotalEnergy() {
+        const currentLedger = get(ledger);
+        return currentLedger.reduce(
+            (total, step) => total + step.startenergy,
+            0,
+        );
+    }
+
+    function getRenewableEnergy() {
+        const currentLedger = get(ledger);
+        return currentLedger.reduce((total, step) => {
+            const sourceNode = data.loc[step.startid];
+            if (sourceNode) {
+                // Check if renewable based on typeMap OR the explicit source_type
+                const renewableTypes = [
+                    "solar",
+                    "wind",
+                    "hydro",
+                    "geothermal",
+                    "biomass",
+                ];
+                const isRenewable = renewableTypes.includes(
+                    sourceNode.prop.source_type,
+                );
+                if (isRenewable) {
+                    return total + step.startenergy;
+                }
+            }
+            return total;
+        }, 0);
+    }
+
+    function getNonRenewableEnergy() {
+        const currentLedger = get(ledger);
+        return currentLedger.reduce((total, step) => {
+            const sourceNode = data.loc[step.startid];
+            if (sourceNode) {
+                // Check if non-renewable based on typeMap OR the explicit source_type
+                const nonRenewableTypes = ["coal", "gas", "oil", "nuclear"];
+                const isNonRenewable = nonRenewableTypes.includes(
+                    sourceNode.prop.source_type,
+                );
+                if (isNonRenewable) {
+                    return total + step.startenergy;
+                }
+            }
+            return total;
+        }, 0);
     }
 
     async function previousStep() {
@@ -537,7 +590,7 @@
 
         <div style="margin-top: 20px;">
             <h4>Active Ledger ({$ledger.length})</h4>
-            <div style="max-height: 40vh; overflow-y: auto;">
+            <div style="max-height: 25vh; overflow-y: auto;">
                 {#each $ledger as step}
                     <div
                         style="font-size: 0.7rem; border-bottom: 1px solid #ccc; padding: 8px 0;"
@@ -545,7 +598,7 @@
                         <span style="font-weight: bold;">{step.startid}</span> →
                         <span style="font-weight: bold;">{step.endid}</span>
                         <div style="opacity: 0.7;">
-                            Supply: {step.startenergy.toFixed(1)} MW (Loss applied)
+                            Supply: {step.startenergy.toFixed(1)} MW
                         </div>
                     </div>
                 {:else}
@@ -555,6 +608,38 @@
                 {/each}
             </div>
         </div>
+
+        {#if $ledger.length > 0}
+            <div
+                style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ccc;"
+            >
+                <h4>Energy Summary</h4>
+                <div style="gap: 10px; font-size: 0.8rem;">
+                    <div>
+                        <span style="font-weight: bold;">Total:</span>
+                        <span style="float: right;"
+                            >{getTotalEnergy().toFixed(1)} MW</span
+                        >
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; color: #22c55e;"
+                            >Renewable:</span
+                        >
+                        <span style="float: right;"
+                            >{getRenewableEnergy().toFixed(1)} MW</span
+                        >
+                    </div>
+                    <div>
+                        <span style="font-weight: bold; color: #ef4444;"
+                            >Non-Renewable:</span
+                        >
+                        <span style="float: right;"
+                            >{getNonRenewableEnergy().toFixed(1)} MW</span
+                        >
+                    </div>
+                </div>
+            </div>
+        {/if}
     </div>
 
     <div id="timeline">
@@ -581,7 +666,7 @@
                 style="width: 120px;"
                 onclick={runOptimization}
             >
-                <div class="in" style="width: 110px;">OPTIMIZE</div>
+                <div class="in" style="width: 110px;">PLAY</div>
             </button>
             <button class="toggle" onclick={nextStep} title="Next Step">
                 <div class="in">{">"}</div>

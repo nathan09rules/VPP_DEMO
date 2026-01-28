@@ -44,14 +44,18 @@ export class draw {
         try {
             const res = await fetch("/borders.geojson");
             const geojson = await res.json();
-            data.L.geoJSON(geojson, {
-                style: {
-                    color: get(config).theme === 'dark' ? '#555' : '#888',
-                    weight: 2,
-                    fillOpacity: 0.1,
-                    interactive: false
-                }
-            }).addTo(this.featureGroup);
+
+            // Only draw borders in dark mode
+            if (get(config).theme === 'dark') {
+                data.L.geoJSON(geojson, {
+                    style: {
+                        color: '#555',
+                        weight: 2,
+                        fillOpacity: 0.1,
+                        interactive: false
+                    }
+                }).addTo(this.featureGroup);
+            }
 
         } catch (e) {
             console.error("Borders failed:", e);
@@ -96,6 +100,7 @@ export class draw {
         nodes.forEach(loc => {
             const net = loc.prop.prod - loc.prop.dem;
             const typeInfo = typeMap[loc.prop.type] || typeMap.power;
+            const theme = get(config).theme;
 
             let color = "#666";
             if (currentMode === 'visual') {
@@ -108,8 +113,11 @@ export class draw {
                 if (net < 0) color = "#ca794eff";
             }
 
+            // Make nodes smaller in dark mode
+            const radius = theme === 'dark' ? 4 : 6;
+
             const marker = data.L.circleMarker(loc.pos, {
-                radius: currentMode === 'heatmap' ? 6 : 6,
+                radius: currentMode === 'heatmap' ? 6 : radius,
                 fillColor: color,
                 color: "#fff",
                 weight: currentMode === 'heatmap' ? 1 : 2,
