@@ -207,11 +207,11 @@ body {
 
 .mode-badge {
     position: fixed;
-    top: 20px;
+    top: 10px;
     left: 20px;
     background: var(--border-color);
     color: var(--primary-bg);
-    padding: 8px 16px;
+    padding: 4px 8px;
     border-radius: 8px;
     font-size: 13px;
     font-weight: bold;
@@ -332,13 +332,6 @@ body {
         width: 24px;
         height: 24px;
         font-size: 0.8rem;
-    }
-
-    .mode-badge {
-        top: 10px;
-        left: 10px;
-        font-size: 13px;
-        padding: 4px 8px;
     }
 
     #dev {

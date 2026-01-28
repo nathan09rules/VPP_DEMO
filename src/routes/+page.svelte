@@ -57,6 +57,16 @@
         init.refresh();
     }
 
+    function getHeatmapLegend() {
+        if ($config.mode !== "heatmap") return null;
+        return {
+            surplus: "Blue areas indicate energy surplus (production > demand)",
+            deficit: "Red areas indicate energy deficit (demand > production)",
+            intensity:
+                "Color intensity represents the magnitude of surplus/deficit",
+        };
+    }
+
     function updateTime(type, val) {
         time.update((t) => {
             const next = { ...t, [type]: val };
@@ -91,8 +101,9 @@
         // Run optimization to update math (ledger) but don't change view mode
         optimize.run();
 
-        // Refresh visualization but don't draw paths
+        // Refresh visualization
         init.refresh();
+
         // If we have an active node, trigger a refresh of its data
         if ($activeData) {
             activeData.update((a) => ({ ...a }));
@@ -259,8 +270,7 @@
             lastProd = $activeData.prop.prod;
             lastDem = $activeData.prop.dem;
             optimize.run();
-            // After manual change, show the new overview
-            activeIndex.set(-1);
+            // Refresh visualization with updated math but keep current view state
             init.refresh();
         }
     });
@@ -279,34 +289,38 @@
 
 <div id="map"></div>
 
-<div id="clock-container">
-    <div class="clock-title">
-        TIME CONTROL - {months[$time.month]}
-        {$time.day}, {$time.hour}:00
-    </div>
-    <div class="clock-controls">
-        <div class="control-group">
-            <span>Month</span>
-            <input
-                type="range"
-                min="0"
-                max="11"
-                value={$time.month}
-                oninput={(e) => updateTime("month", parseInt(e.target.value))}
-            />
+{#if $config.mode === "visual"}
+    <div id="clock-container">
+        <div class="clock-title">
+            TIME CONTROL - {months[$time.month]}
+            {$time.day}, {$time.hour}:00
         </div>
-        <div class="control-group">
-            <span>Hour</span>
-            <input
-                type="range"
-                min="0"
-                max="23"
-                value={$time.hour}
-                oninput={(e) => updateTime("hour", parseInt(e.target.value))}
-            />
+        <div class="clock-controls">
+            <div class="control-group">
+                <span>Month</span>
+                <input
+                    type="range"
+                    min="0"
+                    max="11"
+                    value={$time.month}
+                    oninput={(e) =>
+                        updateTime("month", parseInt(e.target.value))}
+                />
+            </div>
+            <div class="control-group">
+                <span>Hour</span>
+                <input
+                    type="range"
+                    min="0"
+                    max="23"
+                    value={$time.hour}
+                    oninput={(e) =>
+                        updateTime("hour", parseInt(e.target.value))}
+                />
+            </div>
         </div>
     </div>
-</div>
+{/if}
 
 <div id="ui">
     <button
@@ -318,6 +332,127 @@
     >
         Mode: {$config.mode.toUpperCase()}
     </button>
+
+    <!-- Map Legend -->
+    <div
+        id="map-legend"
+        style="
+            position: fixed; 
+            bottom: 90px; 
+            right: 20px; 
+            background: var(--glass-bg); 
+            opacity: 0.8;
+            border: 2px solid var(--border-color); 
+            border-radius: 8px; 
+            padding: 12px; 
+            box-shadow: var(--shadow); 
+            font-size: 0.75rem;
+            pointer-events: auto;
+            z-index: 100;
+            min-width: 140px;
+            backdrop-filter: blur(10px);
+        "
+    >
+        <div
+            style="font-weight: bold; margin-bottom: 8px; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;"
+        >
+            LEGEND: {$config.mode.toUpperCase()}
+        </div>
+
+        {#if $config.mode === "heatmap"}
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #4444ff; border-radius: 3px;"
+                    ></div>
+                    <span>Surplus (MW)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #ff4444; border-radius: 3px;"
+                    ></div>
+                    <span>Deficit (MW)</span>
+                </div>
+                <div
+                    style="display: flex; align-items: center; gap: 8px; opacity: 0.7; font-size: 0.6rem; margin-top: 4px;"
+                >
+                    <span>* Intensity varies with scale</span>
+                </div>
+            </div>
+        {:else if $config.mode === "visual"}
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #FFD700; border-radius: 50%;"
+                    ></div>
+                    <span>Power Plant</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #00BFFF; border-radius: 50%;"
+                    ></div>
+                    <span>Police Station</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #FF0000; border-radius: 50%;"
+                    ></div>
+                    <span>Hospital</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #2E8B57; border-radius: 50%;"
+                    ></div>
+                    <span>Financial</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #9370DB; border-radius: 50%;"
+                    ></div>
+                    <span>University</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; border: 2px dashed #666; height: 0; width: 14px;"
+                    ></div>
+                    <span>Sub-lines</span>
+                </div>
+            </div>
+        {:else}
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #2ecc71; border-radius: 50%;"
+                    ></div>
+                    <span>Renewable Surplus</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #e74c3c; border-radius: 50%;"
+                    ></div>
+                    <span>Non-Renewable Surplus</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #ca794eff; border-radius: 50%;"
+                    ></div>
+                    <span>Power Deficit</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #2ecc71; height: 2px;"
+                    ></div>
+                    <span>Renewable Flow</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="width: 12px; height: 12px; background: #e74c3c; height: 2px;"
+                    ></div>
+                    <span>Non-Renewable Flow</span>
+                </div>
+            </div>
+        {/if}
+    </div>
 
     <div id="dev">
         <button class="toggle" onclick={toggleTheme}>

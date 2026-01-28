@@ -21,7 +21,7 @@ export const data = {
     }),
     featureGroup: null,
     pathGroup: null,
-    activeIndex: writable(-1)
+    activeIndex: writable(-2)
 };
 
 export const activeData = data.active;

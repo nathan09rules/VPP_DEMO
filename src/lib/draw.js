@@ -72,26 +72,29 @@ export class draw {
         const nodes = Object.values(data.loc);
 
         if (currentMode === 'heatmap') {
+            const maxVal = 2000;
             const heatData = nodes.map(loc => {
                 const net = loc.prop.prod - loc.prop.dem;
-                // Normalize intensity: absolute net energy / 2000MW
-                const intensity = Math.min(1.0, Math.abs(net) / 2000);
-                return [loc.pos[0], loc.pos[1], intensity];
+                // Map Range [-2000, 2000] to [0.0, 1.0]
+                // 0.5 is neutral
+                const norm = (net / (maxVal * 2)) + 0.5;
+                const clamped = Math.max(0, Math.min(1, norm));
+                return [loc.pos[0], loc.pos[1], clamped];
             });
 
-            // @ts-ignore - leaflet.heat
+            // @ts-ignore
             if (window.L && window.L.heatLayer) {
                 // @ts-ignore
                 window.L.heatLayer(heatData, {
-                    radius: 80,
-                    blur: 10,
+                    radius: 60, // Sightly smaller for better precision
+                    blur: 25,
                     maxZoom: 10,
                     gradient: {
-                        0.2: 'blue',
-                        0.4: 'cyan',
-                        0.6: 'lime',
-                        0.8: 'yellow',
-                        1.0: 'red'
+                        0.0: '#ff4444', // Deficit (Red)
+                        0.4: '#ff8888',
+                        0.5: 'rgba(255, 255, 255, 0)', // Balanced (Transparent)
+                        0.6: '#8888ff',
+                        1.0: '#4444ff'  // Surplus (Blue)
                     }
                 }).addTo(this.featureGroup);
             }
@@ -106,23 +109,22 @@ export class draw {
             if (currentMode === 'visual') {
                 color = typeInfo.color;
             } else if (currentMode === 'heatmap') {
-                color = net > 0 ? "#00ff00" : "#ff0000";
+                color = net > 0 ? "#4444ff" : "#ff4444";
             } else {
                 const isRenewable = typeInfo.renewable || ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(loc.prop.source_type);
                 if (net > 0) color = isRenewable ? "#2ecc71" : "#e74c3c";
                 if (net < 0) color = "#ca794eff";
             }
 
-            // Make nodes smaller in dark mode
             const radius = theme === 'dark' ? 4 : 6;
 
             const marker = data.L.circleMarker(loc.pos, {
-                radius: currentMode === 'heatmap' ? 6 : radius,
+                radius: currentMode === 'heatmap' ? 4 : radius,
                 fillColor: color,
                 color: "#fff",
                 weight: currentMode === 'heatmap' ? 1 : 2,
-                opacity: currentMode === 'heatmap' ? 0.3 : 1,
-                fillOpacity: currentMode === 'heatmap' ? 0.3 : 0.9,
+                opacity: 1,
+                fillOpacity: 0.9,
                 pane: 'markerPane'
             });
 
@@ -135,22 +137,24 @@ export class draw {
 
             marker.addTo(this.featureGroup);
 
-            // Draw connections to main junctions
+            // Always draw connections to main junctions for better topological understanding
             loc.neighbours.forEach(nId => {
                 const other = data.mains[nId];
                 if (other) {
                     data.L.polyline([loc.pos, [other.lat, other.lng]], {
-                        color: theme === 'dark' ? '#888' : '#333',
-                        weight: 2.5,
-                        opacity: 0.7,
+                        color: theme === 'dark' ? '#555' : '#333',
+                        weight: 2,
+                        opacity: 0.6,
                         dashArray: '4, 4',
                         interactive: false
                     }).addTo(this.featureGroup);
                 }
             });
 
-            // Always draw secondary connections
-            this.connectToMains(loc);
+            // Secondary connections
+            if (currentMode !== 'heatmap') {
+                this.connectToMains(loc);
+            }
         });
     }
 
@@ -225,11 +229,11 @@ export class draw {
             const distance = Math.sqrt(Math.pow(loc.pos[0] - main.lat, 2) + Math.pow(loc.pos[1] - main.lng, 2));
 
             // Only draw connection if reasonably close
-            if (distance < 0.8) {
+            if (distance < 0.8) { // Increased threshold slightly
                 data.L.polyline([loc.pos, [main.lat, main.lng]], {
-                    color: theme === 'dark' ? '#666' : '#999',
-                    weight: 1.5,
-                    opacity: 0.5,
+                    color: theme === 'dark' ? '#888' : '#444',
+                    weight: 2,
+                    opacity: 0.6,
                     dashArray: '5, 5',
                     interactive: false
                 }).addTo(this.featureGroup);
@@ -241,9 +245,11 @@ export class draw {
     drawLedger() {
         const currentLedger = get(ledger);
         const activeIdx = get(data.activeIndex);
+        const currentMode = get(config).mode;
 
         // If index is -2, it means explicit "hide paths" mode (e.g. initial inspect)
-        if (activeIdx === -2) {
+        // Also always hide paths in heatmap mode to keep map clean
+        if (activeIdx === -2 || currentMode === 'heatmap') {
             this.pathGroup.clearLayers();
             return;
         }
