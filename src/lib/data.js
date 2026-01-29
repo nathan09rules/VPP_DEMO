@@ -17,7 +17,7 @@ export const data = {
         renewableBonus: 1.5,
         maxSteps: 5,
         theme: 'light',
-        mode: 'inspect', // inspect, visual, heatmap
+        mode: "INSPECT", // flow, visual, heatmap
     }),
     featureGroup: null,
     pathGroup: null,

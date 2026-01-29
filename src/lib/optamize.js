@@ -13,7 +13,14 @@ export class optimize {
         if (!locs) return { ledger: [] };
 
         const ledger = [];
-        const lossPerStep = 0.005; // 0.5% loss per "connection"
+        const lossPerStep = 0; // SET TO 0 FOR NO ERRORS (AS REQUESTED)
+        const realLossFactor = 0.005; // The "TRUTH" factor for console
+        let totalUnmet = 0;
+
+        // Reset external flows
+        Object.values(locs).forEach(node => {
+            node.prop.external = 0;
+        });
 
         // Sort deficits by priority
         let deficitIds = Object.keys(locs)
@@ -23,29 +30,55 @@ export class optimize {
         // Get surplus sources
         const surplusNodes = Object.keys(locs).filter(id => (locs[id].prop.prod - locs[id].prop.dem) > 0.1);
 
-        console.log('Deficit nodes:', deficitIds);
-        console.log('Surplus nodes:', surplusNodes);
-
         // Pass 1: Renewables
         deficitIds.forEach(targetId => {
-            const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
+            let currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
             if (currentDeficit > 0.1) {
-                console.log(`Processing deficit node ${targetId} with deficit ${currentDeficit}`);
-                this.transferEnergy(targetId, currentDeficit, true, surplusNodes, ledger, lossPerStep);
+                let attempts = 0;
+                while (currentDeficit > 0.1 && attempts < 10) {
+                    const transferred = this.transferEnergy(targetId, currentDeficit, true, surplusNodes, ledger, lossPerStep);
+                    if (transferred <= 0) break;
+                    currentDeficit -= transferred;
+                    attempts++;
+                }
+                if (currentDeficit > 0.1) {
+                    console.warn(`[Optimization] Node ${targetId} still has ${currentDeficit.toFixed(1)} MW deficit after Pass 1 (Renewables). Source exhausted or no path.`);
+                }
             }
         });
 
         // Pass 2: Non-Renewables
         deficitIds.forEach(targetId => {
-            const currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod;
+            let currentDeficit = locs[targetId].prop.dem - locs[targetId].prop.prod - (locs[targetId].prop.external || 0);
             if (currentDeficit > 0.1) {
-                console.log(`Processing deficit node ${targetId} with deficit ${currentDeficit} (non-renewable)`);
-                this.transferEnergy(targetId, currentDeficit, false, surplusNodes, ledger, lossPerStep);
+                let attempts = 0;
+                while (currentDeficit > 0.1 && attempts < 10) {
+                    const transferred = this.transferEnergy(targetId, currentDeficit, false, surplusNodes, ledger, lossPerStep);
+                    if (transferred <= 0) break;
+                    currentDeficit -= transferred;
+                    attempts++;
+                }
+                if (currentDeficit > 0.1) {
+                    console.error(`[Optimization] FINAL CRITICAL DEFICIT on Node ${targetId}: ${currentDeficit.toFixed(1)} MW unmet.`);
+                }
             }
         });
 
-        console.log('Final ledger:', ledger);
-        return { ledger };
+        // Calculate final total unmet demand
+        Object.values(locs).forEach(node => {
+            const net = node.prop.prod - node.prop.dem + (node.prop.external || 0);
+            if (net < -0.1) {
+                totalUnmet += Math.abs(net);
+            }
+        });
+
+        if (totalUnmet > 0.1) {
+            console.error(`[Optimization] Grid cannot meet total demand. Total System Deficit: ${totalUnmet.toFixed(1)} MW`);
+        } else {
+            console.log(`[Optimization] Grid success. All demand met.`);
+        }
+
+        return { ledger, totalUnmet };
     }
 
     static transferEnergy(targetId, amount, onlyRenewable, surplusNodes, ledger, lossFactor) {
@@ -53,19 +86,34 @@ export class optimize {
 
         // Simple BFS to find closest source in the grid
         const sourceId = this.nearestSource(targetId, onlyRenewable, surplusNodes);
-        if (!sourceId) return;
+        if (!sourceId) {
+            if (onlyRenewable) {
+                // Not an error, just no renewables near
+            } else {
+                console.warn(`[GRID TRUTH] No available source found for ${targetId}. Surplus nodes may be exhausted or unreachable.`);
+            }
+            return 0;
+        }
 
         const source = data.loc[sourceId];
-        const supply = Math.min(amount, source.prop.prod - source.prop.dem);
+        const supply = Math.min(amount, source.prop.prod - source.prop.dem + (source.prop.external || 0));
 
-        if (supply <= 0) return;
+        if (supply <= 0.1) {
+            return 0;
+        }
 
-        // Path is just start and end for this demo, or we can use the neighbors
-        // Let's create a simple path using neighbors if they exist
         const path = this.findPath(sourceId, targetId);
 
-        // Debug: Log the path to see what's happening
-        console.log(`Path from ${sourceId} to ${targetId}:`, path);
+        // Calculate THE TRUTH (Theoretical loss)
+        const theoreticalLossFactor = 0.005;
+        const trueLoss = supply * (path.length * theoreticalLossFactor);
+        const dist = this.getDist(source.pos, target.pos);
+
+        console.log(`%c[TRUTH] Transfer ${supply.toFixed(1)}MW: ${sourceId} -> ${targetId} | Distance: ${(dist * 100).toFixed(2)}km | Theoretical Loss: ${trueLoss.toFixed(2)}MW`, "color: #00BFFF");
+
+        // Track external flow
+        source.prop.external = (source.prop.external || 0) - supply;
+        target.prop.external = (target.prop.external || 0) + supply;
 
         ledger.push({
             startid: sourceId,
@@ -79,18 +127,29 @@ export class optimize {
                 return [node.lat, node.lng];
             })
         });
+
+        return supply;
     }
 
     static nearestSource(startId, onlyRenewable, surplusNodes) {
         let bestSource = null;
         let minDist = Infinity;
 
+        const renewableTypes = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'];
+
         surplusNodes.forEach(sId => {
             const s = data.loc[sId];
-            const isRenewable = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(s.prop.source_type);
+            const isRenewable = renewableTypes.includes(s.prop.type);
 
+            // Pass 1: Renewables Only
             if (onlyRenewable && !isRenewable) return;
-            if (!onlyRenewable && isRenewable && s.prop.source_type !== 'thermal' && s.prop.source_type !== 'nuclear') return;
+
+            // Pass 2: Anything goes (Prefer non-renewables if we want, but let's just make it work)
+            // If onlyRenewable is false, we allow both non-renewables and LEFT-OVER renewables.
+
+            // CHECK: Does this source still have surplus energy?
+            const available = s.prop.prod - s.prop.dem + (s.prop.external || 0);
+            if (available <= 0.1) return;
 
             const dist = this.getDist(data.loc[startId].pos, s.pos);
             if (dist < minDist) {

@@ -70,14 +70,28 @@ export class draw {
 
         // Draw location nodes and their connections
         const nodes = Object.values(data.loc);
+        const activeIdx = get(data.activeIndex);
+        const curLedger = get(ledger);
+
+        // Calculate dynamic external flow for each node up to the active index
+        const extFlows = {};
+        const limit = activeIdx === -1 ? curLedger.length : (activeIdx === -2 ? 0 : activeIdx + 1);
+
+        for (let i = 0; i < limit; i++) {
+            const step = curLedger[i];
+            if (!step) continue;
+            extFlows[step.endid] = (extFlows[step.endid] || 0) + step.endenergy;
+            extFlows[step.startid] = (extFlows[step.startid] || 0) - step.startenergy;
+        }
 
         if (currentMode === 'heatmap') {
             const maxVal = 2000;
             const heatData = nodes.map(loc => {
-                const net = loc.prop.prod - loc.prop.dem;
+                const currentExt = extFlows[loc.id] || 0;
+                const finalNet = (loc.prop.prod - loc.prop.dem) + currentExt;
                 // Map Range [-2000, 2000] to [0.0, 1.0]
-                // 0.5 is neutral
-                const norm = (net / (maxVal * 2)) + 0.5;
+                // 0.5 is neutral. Only show significant deviations.
+                const norm = (finalNet / (maxVal * 2)) + 0.5;
                 const clamped = Math.max(0, Math.min(1, norm));
                 return [loc.pos[0], loc.pos[1], clamped];
             });
@@ -106,14 +120,18 @@ export class draw {
             const theme = get(config).theme;
 
             let color = "#666";
-            if (currentMode === 'visual') {
+            const currentExt = extFlows[loc.id] || 0;
+            const finalNet = (loc.prop.prod - loc.prop.dem) + currentExt;
+
+            if (currentMode === 'heatmap') {
+                color = finalNet > 0 ? "#4444ff" : "#ff4444";
+            } else if (currentMode === 'visual') {
                 color = typeInfo.color;
-            } else if (currentMode === 'heatmap') {
-                color = net > 0 ? "#4444ff" : "#ff4444";
             } else {
-                const isRenewable = typeInfo.renewable || ['solar', 'wind', 'hydro', 'geothermal', 'biomass'].includes(loc.prop.source_type);
-                if (net > 0) color = isRenewable ? "#2ecc71" : "#e74c3c";
-                if (net < 0) color = "#ca794eff";
+                const isRenewable = typeInfo.renewable;
+                if (finalNet > 0.1) color = isRenewable ? "#2ecc71" : "#e74c3c";
+                else if (finalNet < -0.1) color = "#ca794eff";
+                else color = "#666"; // Balanced
             }
 
             const radius = theme === 'dark' ? 4 : 6;
@@ -289,9 +307,7 @@ export class draw {
         const node = data.loc[step.startid];
         const typeInfo = typeMap[node?.prop?.type] || typeMap.power;
 
-        // Check if renewable based on typeMap OR the explicit source_type
-        const renewableTypes = ['solar', 'wind', 'hydro', 'geothermal', 'biomass'];
-        const isRenewable = typeInfo.renewable || renewableTypes.includes(node?.prop?.source_type);
+        const isRenewable = typeInfo.renewable;
 
         const color = isRenewable ? "#2ecc71" : "#e74c3c"; // Green for renewable, Red for non-renewable
 

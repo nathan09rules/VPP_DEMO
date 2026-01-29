@@ -46,7 +46,7 @@ export const simulation = {
         const lat = node.pos[0];
         const peakProd = Math.max(...node.prop.hourlyProd);
         const peakDem = Math.max(...node.prop.hourlyDem);
-        const sourceType = node.prop.source_type;
+        const type = node.prop.type;
 
         const newProd = [];
         const newDem = [];
@@ -54,14 +54,14 @@ export const simulation = {
         for (let h = 0; h < 24; h++) {
             let p = 0;
             if (peakProd > 0) {
-                if (sourceType === 'solar') {
+                if (type === 'solar') {
                     p = this.calculateSolar(peakProd, lat, month, h);
-                } else if (sourceType === 'wind') {
+                } else if (type === 'wind') {
                     p = this.calculateWind(peakProd, month, h);
-                } else if (sourceType === 'hydro') {
+                } else if (type === 'hydro') {
                     p = this.calculateHydro(peakProd, month);
                 } else {
-                    p = this.calculateThermal(peakProd, sourceType);
+                    p = this.calculateThermal(peakProd, type);
                 }
             }
             newProd.push(Math.round(p));

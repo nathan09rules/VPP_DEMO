@@ -49,6 +49,13 @@ export const init = {
                 const hourlyProd = f.properties.prod_hourly || Array(24).fill(0);
                 const hourlyDem = f.properties.dem_hourly || Array(24).fill(0);
 
+                // If sub_type is power, use source_type as the primary type
+                // Otherwise use sub_type (hospital, police, etc.)
+                let type = f.properties.sub_type || 'power';
+                if (type === 'power' && f.properties.source_type) {
+                    type = f.properties.source_type;
+                }
+
                 data.loc[id] = {
                     id: id,
                     pos: [f.properties.lat, f.properties.lng],
@@ -60,8 +67,7 @@ export const init = {
                         hourlyDem: hourlyDem,
                         store: f.properties.store || 0,
                         priority: f.properties.priority || 5,
-                        type: f.properties.sub_type || 'power',
-                        source_type: f.properties.source_type || 'thermal'
+                        type: type
                     },
                     neighbours: []
                 };
@@ -118,6 +124,17 @@ export const init = {
                 }
             }
         });
+
+        // Check for nodes not connected to grid
+        const unconnectedNodes = locs.filter(loc => loc.neighbours.length === 0);
+        if (unconnectedNodes.length > 0) {
+            console.log(`[GRID CHECK] ${unconnectedNodes.length} nodes are not connected to the grid:`);
+            unconnectedNodes.forEach(node => {
+                console.log(`  - Node ${node.id} (${node.prop.name || 'Unnamed'}): pos=[${node.pos[0]}, ${node.pos[1]}]`);
+            });
+        } else {
+            console.log("[GRID CHECK] All nodes are connected to the grid.");
+        }
     },
 
     setTheme(theme) {
