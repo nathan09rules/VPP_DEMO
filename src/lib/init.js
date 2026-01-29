@@ -63,11 +63,13 @@ export const init = {
                         name: f.properties.name,
                         prod: 0, // Set later
                         dem: 0,  // Set later
+                        external: 0,  //later
                         hourlyProd: hourlyProd,
                         hourlyDem: hourlyDem,
                         store: f.properties.store || 0,
                         priority: f.properties.priority || 5,
-                        type: type
+                        type: type,
+                        source_type: f.properties.source_type
                     },
                     neighbours: []
                 };

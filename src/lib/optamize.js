@@ -42,7 +42,7 @@ export class optimize {
                     attempts++;
                 }
                 if (currentDeficit > 0.1) {
-                    console.warn(`[Optimization] Node ${targetId} still has ${currentDeficit.toFixed(1)} MW deficit after Pass 1 (Renewables). Source exhausted or no path.`);
+                    //console.warn(`[Optimization] Node ${targetId} still has ${currentDeficit.toFixed(1)} MW deficit after Pass 1 (Renewables). Source exhausted or no path.`);
                 }
             }
         });
@@ -59,7 +59,7 @@ export class optimize {
                     attempts++;
                 }
                 if (currentDeficit > 0.1) {
-                    console.error(`[Optimization] FINAL CRITICAL DEFICIT on Node ${targetId}: ${currentDeficit.toFixed(1)} MW unmet.`);
+                    //console.error(`[Optimization] FINAL CRITICAL DEFICIT on Node ${targetId}: ${currentDeficit.toFixed(1)} MW unmet.`);
                 }
             }
         });
@@ -73,9 +73,9 @@ export class optimize {
         });
 
         if (totalUnmet > 0.1) {
-            console.error(`[Optimization] Grid cannot meet total demand. Total System Deficit: ${totalUnmet.toFixed(1)} MW`);
+            //console.error(`[Optimization] Grid cannot meet total demand. Total System Deficit: ${totalUnmet.toFixed(1)} MW`);
         } else {
-            console.log(`[Optimization] Grid success. All demand met.`);
+            //console.log(`[Optimization] Grid success. All demand met.`);
         }
 
         return { ledger, totalUnmet };
@@ -90,7 +90,7 @@ export class optimize {
             if (onlyRenewable) {
                 // Not an error, just no renewables near
             } else {
-                console.warn(`[GRID TRUTH] No available source found for ${targetId}. Surplus nodes may be exhausted or unreachable.`);
+                //console.warn(`[GRID TRUTH] No available source found for ${targetId}. Surplus nodes may be exhausted or unreachable.`);
             }
             return 0;
         }
@@ -109,7 +109,7 @@ export class optimize {
         const trueLoss = supply * (path.length * theoreticalLossFactor);
         const dist = this.getDist(source.pos, target.pos);
 
-        console.log(`%c[TRUTH] Transfer ${supply.toFixed(1)}MW: ${sourceId} -> ${targetId} | Distance: ${(dist * 100).toFixed(2)}km | Theoretical Loss: ${trueLoss.toFixed(2)}MW`, "color: #00BFFF");
+        //console.log(`%c[TRUTH] Transfer ${supply.toFixed(1)}MW: ${sourceId} -> ${targetId} | Distance: ${(dist * 100).toFixed(2)}km | Theoretical Loss: ${trueLoss.toFixed(2)}MW`, "color: #00BFFF");
 
         // Track external flow
         source.prop.external = (source.prop.external || 0) - supply;

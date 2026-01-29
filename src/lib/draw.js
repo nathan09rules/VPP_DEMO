@@ -77,13 +77,6 @@ export class draw {
         const extFlows = {};
         const limit = activeIdx === -1 ? curLedger.length : (activeIdx === -2 ? 0 : activeIdx + 1);
 
-        for (let i = 0; i < limit; i++) {
-            const step = curLedger[i];
-            if (!step) continue;
-            extFlows[step.endid] = (extFlows[step.endid] || 0) + step.endenergy;
-            extFlows[step.startid] = (extFlows[step.startid] || 0) - step.startenergy;
-        }
-
         if (currentMode === 'heatmap') {
             const maxVal = 2000;
             const heatData = nodes.map(loc => {
@@ -116,21 +109,19 @@ export class draw {
 
         nodes.forEach(loc => {
             const net = loc.prop.prod - loc.prop.dem;
-            const typeInfo = typeMap[loc.prop.type] || typeMap.power;
+            const typeInfo = typeMap[loc.prop.source_type] || typeMap.power;
             const theme = get(config).theme;
 
             let color = "#666";
-            const currentExt = extFlows[loc.id] || 0;
-            const finalNet = (loc.prop.prod - loc.prop.dem) + currentExt;
-
+            const finalNet = (loc.prop.prod - loc.prop.dem) + loc.prop.external;
             if (currentMode === 'heatmap') {
-                color = finalNet > 0 ? "#4444ff" : "#ff4444";
+                color = finalNet > 1.0 ? "#4444ff" : (finalNet < -1.0 ? "#ff4444" : "#666");
             } else if (currentMode === 'visual') {
                 color = typeInfo.color;
             } else {
                 const isRenewable = typeInfo.renewable;
-                if (finalNet > 0.1) color = isRenewable ? "#2ecc71" : "#e74c3c";
-                else if (finalNet < -0.1) color = "#ca794eff";
+                if (finalNet > 1.0) color = isRenewable ? "#2ecc71" : "#e74c3c"; // Surplus
+                else if (finalNet < -1.0) color = "#fc954cff"; // Deficit
                 else color = "#666"; // Balanced
             }
 
@@ -276,6 +267,11 @@ export class draw {
             // Overview: Show all paths
             if (currentLedger.length > 0) {
                 this.pathGroup.clearLayers();
+                // Reset external values for all nodes
+                Object.values(data.loc).forEach(loc => {
+                    loc.prop.external = 0;
+                });
+
                 currentLedger.forEach(step => {
                     this.path(step);
                 });
@@ -303,11 +299,23 @@ export class draw {
 
         if (!step || !step.path) return;
 
+        // Update external values for the nodes involved in this step
+        const startNode = data.loc[step.startid];
+        const endNode = data.loc[step.endid];
+
+        if (startNode) {
+            startNode.prop.external = (startNode.prop.external || 0) - step.startenergy;
+        }
+        if (endNode) {
+            endNode.prop.external = (endNode.prop.external || 0) + step.endenergy;
+        }
         // Find the node to check if it's renewable
         const node = data.loc[step.startid];
         const typeInfo = typeMap[node?.prop?.type] || typeMap.power;
 
-        const isRenewable = typeInfo.renewable;
+        // Check if renewable based on typeMap OR the explicit source_type
+        const renewableTypes = ['solar', 'wind', 'hydro', 'geothermal', 'biomass', 'thermal'];
+        const isRenewable = typeInfo.renewable || renewableTypes.includes(node?.prop?.source_type);
 
         const color = isRenewable ? "#2ecc71" : "#e74c3c"; // Green for renewable, Red for non-renewable
 
@@ -316,14 +324,16 @@ export class draw {
             weight: 6,
             opacity: 1.0,
             className: 'energy-path',
-            interactive: false
+            interactive: false,
+            pane: 'overlayPane'
         }).addTo(this.pathGroup);
 
         const glowPath = data.L.polyline(step.path, {
             color: 'white',
             weight: 10,
             opacity: 0.4,
-            interactive: false
+            interactive: false,
+            pane: 'overlayPane'
         }).addTo(this.pathGroup);
 
         path.bringToFront();

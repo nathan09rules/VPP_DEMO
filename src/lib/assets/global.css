@@ -305,6 +305,69 @@ body {
     overflow: visible;
 }
 
+/* Map Legend Styles */
+#map-legend {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    background: var(--glass-bg);
+    opacity: 0.8;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: var(--shadow);
+    font-size: 0.75rem;
+    pointer-events: auto;
+    z-index: 100;
+    min-width: 140px;
+    backdrop-filter: blur(10px);
+}
+
+#map-legend .legend-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+#map-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+#map-legend .legend-item:last-child {
+    margin-bottom: 0;
+}
+
+#map-legend .legend-item .color-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+#map-legend .legend-item .color-line {
+    width: 12px;
+    height: 12px;
+    border: 2px dashed #666;
+    height: 0;
+    width: 14px;
+}
+
+#map-legend .legend-item .color-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+#map-legend .legend-item .small-text {
+    font-size: 0.6rem;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
 @media (max-width: 768px) {
 
     #dashboard.open {
@@ -343,4 +406,61 @@ body {
         top: 60px;
         right: 10px;
     }
+}
+
+.step-indicator {
+    background: var(--border-color);
+    color: var(--primary-bg);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    box-shadow: var(--shadow);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: var(--glass-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    width: 350px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(20px);
+    color: var(--primary-text);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.toggle.active {
+    background: #2ecc71;
+    border-color: #27ae60;
+}
+
+.toggle.active .in {
+    color: white;
 }
