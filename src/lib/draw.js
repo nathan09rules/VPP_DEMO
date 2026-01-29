@@ -109,19 +109,19 @@ export class draw {
 
         nodes.forEach(loc => {
             const net = loc.prop.prod - loc.prop.dem;
-            const typeInfo = typeMap[loc.prop.source_type] || typeMap.power;
+            const typeInfo = typeMap[loc.prop.type] || typeMap.power;
             const theme = get(config).theme;
 
             let color = "#666";
-            const finalNet = (loc.prop.prod - loc.prop.dem) + loc.prop.external;
+            const finalNet = (loc.prop.prod - loc.prop.dem); //+ loc.prop.external;
             if (currentMode === 'heatmap') {
                 color = finalNet > 1.0 ? "#4444ff" : (finalNet < -1.0 ? "#ff4444" : "#666");
             } else if (currentMode === 'visual') {
-                color = typeInfo.color;
+                color = typeMap[loc.prop.type]?.color || "#FFD700";
             } else {
                 const isRenewable = typeInfo.renewable;
                 if (finalNet > 1.0) color = isRenewable ? "#2ecc71" : "#e74c3c"; // Surplus
-                else if (finalNet < -1.0) color = "#fc954cff"; // Deficit
+                else if (finalNet < -1.0) color = "#e6987cf4"; // Deficit
                 else color = "#666"; // Balanced
             }
 
@@ -151,7 +151,7 @@ export class draw {
                 const other = data.mains[nId];
                 if (other) {
                     data.L.polyline([loc.pos, [other.lat, other.lng]], {
-                        color: theme === 'dark' ? '#555' : '#333',
+                        color: theme === 'dark' ? '#555' : '#cececeff',
                         weight: 2,
                         opacity: 0.6,
                         dashArray: '4, 4',
@@ -240,7 +240,7 @@ export class draw {
             // Only draw connection if reasonably close
             if (distance < 0.8) { // Increased threshold slightly
                 data.L.polyline([loc.pos, [main.lat, main.lng]], {
-                    color: theme === 'dark' ? '#888' : '#444',
+                    color: theme === 'dark' ? '#ffffffff' : '#444',
                     weight: 2,
                     opacity: 0.6,
                     dashArray: '5, 5',
@@ -325,7 +325,7 @@ export class draw {
             opacity: 1.0,
             className: 'energy-path',
             interactive: false,
-            pane: 'overlayPane'
+            pane: 'markerPane'
         }).addTo(this.pathGroup);
 
         const glowPath = data.L.polyline(step.path, {
@@ -333,7 +333,7 @@ export class draw {
             weight: 10,
             opacity: 0.4,
             interactive: false,
-            pane: 'overlayPane'
+            pane: 'markerPane'
         }).addTo(this.pathGroup);
 
         path.bringToFront();

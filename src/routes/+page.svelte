@@ -42,6 +42,7 @@
         priority: 5,
         store: 0,
         prod: 100,
+        dem: 0,
     });
 
     const months = [
@@ -91,11 +92,25 @@
                         node,
                         next.month,
                     );
-                    node.prop.hourlyProd = profiles.prod;
-                    node.prop.hourlyDem = profiles.dem;
+                    // Only update hourly profiles if they haven't been manually modified
+                    // We'll track this by checking if the current hourly values match the simulation
+                    const currentProdMatchesSim =
+                        JSON.stringify(node.prop.hourlyProd) ===
+                        JSON.stringify(profiles.prod);
+                    const currentDemMatchesSim =
+                        JSON.stringify(node.prop.hourlyDem) ===
+                        JSON.stringify(profiles.dem);
+
+                    if (currentProdMatchesSim) {
+                        node.prop.hourlyProd = profiles.prod;
+                    }
+                    if (currentDemMatchesSim) {
+                        node.prop.hourlyDem = profiles.dem;
+                    }
                 });
             }
             Object.values(data.loc).forEach((node) => {
+                // Always update current hour values, but preserve manual changes
                 node.prop.prod = node.prop.hourlyProd[next.hour];
                 node.prop.dem = node.prop.hourlyDem[next.hour];
             });
@@ -124,17 +139,57 @@
         init.refresh();
         const currentLedger = get(ledger);
         if (currentLedger.length > 0) {
-            activeIndex.set(-1);
+            // Start from the beginning, not the final step
+            activeIndex.set(-2);
             init.refresh();
+
+            // Show paths one by one with automatic fading
+            const delayBetweenPaths = 200; // 200ms between each path
+            const pathDuration = 1000; // 1000ms path visibility before fade
+            const fadeDuration = 300; // 300ms fade out duration
+
             currentLedger.forEach((step, index) => {
                 setTimeout(() => {
                     if (currentSession !== animationSession) return;
                     if (data.map && data.L) {
                         const renderer = new draw();
-                        renderer.path(index);
+                        const pathResult = renderer.path(index);
                         activeIndex.set(index);
+
+                        // Add smooth fade out effect after pathDuration
+                        setTimeout(() => {
+                            if (currentSession !== animationSession) return;
+                            if (pathResult && pathResult.path) {
+                                // Smooth fade out the path
+                                const pathElement =
+                                    pathResult.path.getElement();
+                                const glowElement =
+                                    pathResult.glowPath.getElement();
+
+                                if (pathElement) {
+                                    pathElement.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                                    pathElement.style.opacity = "0";
+                                }
+                                if (glowElement) {
+                                    glowElement.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                                    glowElement.style.opacity = "0";
+                                }
+
+                                // Remove path after fade completes
+                                setTimeout(() => {
+                                    if (currentSession !== animationSession)
+                                        return;
+                                    if (pathResult.path) {
+                                        pathResult.path.remove();
+                                    }
+                                    if (pathResult.glowPath) {
+                                        pathResult.glowPath.remove();
+                                    }
+                                }, fadeDuration);
+                            }
+                        }, pathDuration);
                     }
-                }, 100 * index);
+                }, delayBetweenPaths * index);
             });
         }
     }
@@ -200,6 +255,7 @@
             lastProd = $activeData.prop.prod;
             lastDem = $activeData.prop.dem;
             activeIndex.set(-2);
+            // Only refresh visualization - DO NOT run optimization when clicking nodes
             init.refresh();
             return;
         }
@@ -209,7 +265,14 @@
         ) {
             lastProd = $activeData.prop.prod;
             lastDem = $activeData.prop.dem;
-            optimizationResult = optimize.run();
+
+            // Update only the current hour in the hourly profiles
+            // This ensures the graphs and data.loc are updated for the current time only
+            const currentHour = $time.hour;
+            $activeData.prop.hourlyProd[currentHour] = $activeData.prop.prod;
+            $activeData.prop.hourlyDem[currentHour] = $activeData.prop.dem;
+
+            // Only refresh visualization - DO NOT run optimization when clicking nodes
             init.refresh();
         }
     });
@@ -234,16 +297,15 @@
 
     function addNode() {
         const id = `loc_${Object.keys(data.loc).length}_added`;
-        const val = newNodeData.prod;
         data.loc[id] = {
             id: id,
             pos: newNodeCoords,
             prop: {
                 name: newNodeData.name,
-                prod: val,
-                dem: val,
-                hourlyProd: Array(24).fill(val),
-                hourlyDem: Array(24).fill(val),
+                prod: newNodeData.prod,
+                dem: newNodeData.dem,
+                hourlyProd: Array(24).fill(newNodeData.prod),
+                hourlyDem: Array(24).fill(newNodeData.dem),
                 store: newNodeData.store,
                 priority: newNodeData.priority,
                 type: newNodeData.type,
@@ -296,16 +358,12 @@
 <Clock {months} {updateTime} />
 
 <div id="ui">
-    <button
-        type="button"
-        class="mode-badge"
-        onclick={cycleMode}
-        style="cursor: pointer;"
-        aria-label="Cycle Mode"
-    >
-        Mode: {$config.mode === "inspect"
-            ? "inspect"
-            : $config.mode.toUpperCase()}
+    <button class="mode-badge" onclick={cycleMode} aria-label="Cycle Mode">
+        <div class="in">
+            Mode: {$config.mode === "inspect"
+                ? "INSPECT"
+                : $config.mode.toUpperCase()}
+        </div>
     </button>
 
     <Legend {innerWidth} />

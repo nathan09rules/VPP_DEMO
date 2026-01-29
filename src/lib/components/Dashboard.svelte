@@ -33,7 +33,7 @@
         <h3>Regional Controls</h3>
         <button
             onclick={closeDashboard}
-            style="border: none; background: none; cursor: pointer; font-size: 1.5rem;"
+            style="border: none; background: none; cursor: pointer; font-size: 1.5rem; color: var(--primary-text);"
             >×</button
         >
     </div>
@@ -45,49 +45,6 @@
     >
         {isAdvanced ? "Switch to Simple" : "Switch to Advanced"}
     </button>
-
-    <div
-        style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;"
-    >
-        <button
-            class="search-btn"
-            style="position: static; transform: none; width: 100%; margin: 0; background: {$config.mode ===
-            'inspect'
-                ? 'var(--border-color)'
-                : 'var(--primary-bg)'}; color: {$config.mode === 'inspect'
-                ? 'var(--primary-bg)'
-                : 'var(--primary-text)'};"
-            onclick={() => setMode("inspect")}
-        >
-            NORMAL inspect MODE
-        </button>
-        <div style="display: flex; gap: 8px;">
-            <button
-                class="search-btn"
-                style="position: static; transform: none; width: 50%; margin: 0; font-size: 0.7rem; background: {$config.mode ===
-                'visual'
-                    ? 'var(--border-color)'
-                    : 'var(--primary-bg)'}; color: {$config.mode === 'visual'
-                    ? 'var(--primary-bg)'
-                    : 'var(--primary-text)'};"
-                onclick={() => setMode("visual")}
-            >
-                THEMATIC
-            </button>
-            <button
-                class="search-btn"
-                style="position: static; transform: none; width: 50%; margin: 0; font-size: 0.7rem; background: {$config.mode ===
-                'heatmap'
-                    ? 'var(--border-color)'
-                    : 'var(--primary-bg)'}; color: {$config.mode === 'heatmap'
-                    ? 'var(--primary-bg)'
-                    : 'var(--primary-text)'};"
-                onclick={() => setMode("heatmap")}
-            >
-                HEATMAP
-            </button>
-        </div>
-    </div>
 
     <button
         class="search-btn"

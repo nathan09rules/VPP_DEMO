@@ -35,7 +35,7 @@
             </div>
             <button
                 onclick={() => activeData.set(null)}
-                style="border: none; background: none; cursor: pointer; font-family: inherit;"
+                style="border: none; background: var(--primary-bg); width: 1.5rem; height: 1rem; padding: 0; cursor: pointer; font-family: inherit; color: var(--primary-text);"
                 >[X]</button
             >
         </div>
@@ -197,29 +197,24 @@
                         {#if currentExternal !== 0}
                             <rect
                                 x={($time.hour / 23) * 300 - 5}
-                                y={currentExternal > 0
-                                    ? 50 -
-                                      Math.min(
-                                          45,
-                                          (currentExternal /
-                                              Math.max(
-                                                  ...$activeData.prop
-                                                      .hourlyProd,
-                                                  ...$activeData.prop.hourlyDem,
-                                                  1,
-                                              )) *
-                                              50,
-                                      )
-                                    : 50}
+                                y={100 -
+                                    $activeData.prop.dem *
+                                        (100 /
+                                            Math.max(
+                                                ...$activeData.prop.hourlyProd,
+                                                ...$activeData.prop.hourlyDem,
+                                                1,
+                                            ))}
                                 width="10"
                                 height={Math.abs(
-                                    (currentExternal /
-                                        Math.max(
-                                            ...$activeData.prop.hourlyProd,
-                                            ...$activeData.prop.hourlyDem,
-                                            1,
-                                        )) *
-                                        50,
+                                    ($activeData.prop.dem -
+                                        $activeData.prop.prod) *
+                                        (100 /
+                                            Math.max(
+                                                ...$activeData.prop.hourlyProd,
+                                                ...$activeData.prop.hourlyDem,
+                                                1,
+                                            )),
                                 )}
                                 fill={currentExternal > 0
                                     ? "#00BFFF"
