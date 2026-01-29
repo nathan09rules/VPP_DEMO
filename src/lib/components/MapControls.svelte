@@ -10,7 +10,9 @@
         onclick={toggleEditMode}
         title="Toggle Edit Mode"
     >
-        <div class="in">{isEditMode ? "✓" : "+"}</div>
+        <div class="in">
+            {isEditMode ? "✓" : "+"}
+        </div>
     </button>
     <button class="toggle" onclick={toggleTheme}>
         <div class="in">{theme === "light" ? "D" : "L"}</div>
