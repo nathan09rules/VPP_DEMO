@@ -33,7 +33,7 @@ export function getRenewableEnergy() {
     return currentLedger.reduce((total, step) => {
         const sourceNode = data.loc[step.startid];
         if (sourceNode) {
-            if (renewableTypes.includes(sourceNode.prop.type)) {
+            if (renewableTypes.includes(sourceNode.prop.source_type)) {
                 return total + step.startenergy;
             }
         }
@@ -47,7 +47,7 @@ export function getNonRenewableEnergy() {
     return currentLedger.reduce((total, step) => {
         const sourceNode = data.loc[step.startid];
         if (sourceNode) {
-            if (nonRenewableTypes.includes(sourceNode.prop.type)) {
+            if (nonRenewableTypes.includes(sourceNode.prop.source_type)) {
                 return total + step.startenergy;
             }
         }

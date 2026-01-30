@@ -36,11 +36,19 @@
                 </select>
             </div>
             <div class="inspect-row">
-                <label for="new-prod">Base Value (MW):</label>
+                <label for="new-prod">Production (MW):</label>
                 <input
                     id="new-prod"
                     type="number"
                     bind:value={newNodeData.prod}
+                />
+            </div>
+            <div class="inspect-row">
+                <label for="new-demand">Demand (MW):</label>
+                <input
+                    id="new-demand"
+                    type="number"
+                    bind:value={newNodeData.dem}
                 />
             </div>
             <div class="inspect-row">

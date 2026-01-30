@@ -120,7 +120,7 @@
             }
             return next;
         });
-        optimizationResult = optimize.run();
+        // Don't run optimization on time change - preserve external flows
         init.refresh();
         if ($activeData) activeData.update((a) => ({ ...a }));
     }
@@ -316,7 +316,7 @@
         data.loc[id].prop.hourlyProd[$time.hour] = newNodeData.prod;
         data.loc[id].prop.hourlyDem[$time.hour] = newNodeData.dem;
         init.createGrid();
-        optimize.run();
+        // Don't run optimization automatically - preserve external flows
         init.refresh();
         showAddNodeModal = false;
         newNodeCoords = null;

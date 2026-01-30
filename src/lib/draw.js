@@ -217,7 +217,7 @@ export class draw {
             // Only draw connection if reasonably close
             if (distance < 0.8) { // Increased threshold slightly
                 data.L.polyline([loc.pos, [main.lat, main.lng]], {
-                    color: theme === 'dark' ? '#ffffffff' : '#444',
+                    color: theme === 'dark' ? '#ffffffff' : '#1d1c1cff',
                     weight: 2,
                     opacity: 0.6,
                     dashArray: '5, 5',
