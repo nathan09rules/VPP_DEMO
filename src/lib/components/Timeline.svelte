@@ -16,7 +16,7 @@
     <div style="display: flex; gap: 10px; align-items: center;">
         <button
             class="timeline-btn"
-            on:click|preventDefault={previousStep}
+            onclick={previousStep}
             title="Previous Step"
         >
             <div class="in">{"<"}</div>
@@ -24,15 +24,11 @@
         <button
             class="timeline-btn"
             style="width: 120px;"
-            on:click|preventDefault={runOptimization}
+            onclick={runOptimization}
         >
             <div class="in" style="width: 110px;">PLAY</div>
         </button>
-        <button
-            class="timeline-btn"
-            on:click|preventDefault={nextStep}
-            title="Next Step"
-        >
+        <button class="timeline-btn" onclick={nextStep} title="Next Step">
             <div class="in">{">"}</div>
         </button>
     </div>

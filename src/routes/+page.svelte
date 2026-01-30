@@ -144,7 +144,7 @@
             init.refresh();
 
             // Show paths one by one with automatic fading
-            const delayBetweenPaths = 200; // 200ms between each path
+            const delayBetweenPaths = 100; // 200ms between each path
             const pathDuration = 1000; // 1000ms path visibility before fade
             const fadeDuration = 300; // 300ms fade out duration
 

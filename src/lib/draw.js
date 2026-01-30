@@ -265,7 +265,8 @@ export class draw {
 
         if (typeof stepOrIndex === 'number') {
             if (stepOrIndex >= 0 && stepOrIndex < currentLedger.length) {
-                this.clearPaths();
+                // Instead of clearing all paths immediately, fade out existing ones
+                this.fadeOutExistingPaths();
                 step = currentLedger[stepOrIndex];
             } else {
                 return null;
@@ -314,7 +315,43 @@ export class draw {
         }).addTo(this.pathGroup);
 
         path.bringToFront();
+
+        // Start smooth fade-out animation
+        this.startFadeOutAnimation(path, glowPath);
+
         return { path, glowPath };
+    }
+
+    fadeOutExistingPaths() {
+        // Get all existing paths and start fading them out
+        this.pathGroup.eachLayer(layer => {
+            if (layer.options.className === 'energy-path' || layer.options.color === 'white') {
+                this.startFadeOutAnimation(layer);
+            }
+        });
+    }
+
+    startFadeOutAnimation(path, glowPath = null) {
+        let opacity = path.options.opacity || 1.0;
+        const fadeInterval = setInterval(() => {
+            opacity -= 0.01;
+            if (opacity <= 0) {
+                opacity = 0;
+                clearInterval(fadeInterval);
+                // Remove the path after it's fully faded
+                if (this.pathGroup.hasLayer(path)) {
+                    this.pathGroup.removeLayer(path);
+                }
+                if (glowPath && this.pathGroup.hasLayer(glowPath)) {
+                    this.pathGroup.removeLayer(glowPath);
+                }
+            } else {
+                path.setStyle({ opacity: opacity });
+                if (glowPath) {
+                    glowPath.setStyle({ opacity: opacity * 0.4 }); // Keep glow at 40% of main path opacity
+                }
+            }
+        }, 50); // Reduce opacity every 100ms (0.1s)
     }
 
     // Method to clear only paths, not the entire layer
