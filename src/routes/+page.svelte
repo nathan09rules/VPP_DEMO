@@ -309,6 +309,7 @@
                 store: newNodeData.store,
                 priority: newNodeData.priority,
                 type: newNodeData.type,
+                source_type: newNodeData.type,
             },
             neighbours: [],
         };

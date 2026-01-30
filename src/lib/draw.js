@@ -10,6 +10,7 @@ const typeMap = {
     nuclear: { code: "N", color: "#ADFF2F", renewable: true },
     biomass: { code: "B", color: "#32CD32", renewable: true },
     geothermal: { code: "G", color: "#F4A460", renewable: true },
+    thermal: { code: "T", color: "#FF4500", renewable: false },
     coal: { code: "C", color: "#8B4513", renewable: false },
     gas: { code: "G", color: "#FFA500", renewable: false },
     oil: { code: "O", color: "#FF4500", renewable: false },
@@ -35,7 +36,6 @@ export class draw {
     run() {
         if (!this.featureGroup) return;
         this.clearAll(); // This clears both featureGroup and pathGroup
-        this.drawBorders();
         this.drawLocations();
         this.drawLedger();
     }
@@ -109,7 +109,7 @@ export class draw {
 
         nodes.forEach(loc => {
             const net = loc.prop.prod - loc.prop.dem;
-            const typeInfo = typeMap[loc.prop.type] || typeMap.power;
+            const typeInfo = typeMap[loc.prop.source_type] || typeMap.power;
             const theme = get(config).theme;
 
             let color = "#666";
@@ -182,29 +182,6 @@ export class draw {
             });
 
             mainMarker.bindTooltip(`Main Junction ${main.id}`);
-
-            mainMarker.on('mousedown', (e) => {
-                data.L.DomEvent.stopPropagation(e);
-            });
-
-            mainMarker.on('click', (e) => {
-                data.L.DomEvent.stopPropagation(e);
-                activeData.set({
-                    id: main.id,
-                    lat: main.lat,
-                    lng: main.lng,
-                    type: 'main',
-                    name: `Main Junction ${main.id}`,
-                    prop: {
-                        prod: 0,
-                        dem: 0,
-                        store: 0,
-                        priority: 1,
-                        type: 'main',
-                        source_type: 'infrastructure'
-                    }
-                });
-            });
 
             mainMarker.addTo(this.featureGroup);
 

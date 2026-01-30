@@ -17,7 +17,7 @@
             </div>
             <div class="inspect-row">
                 <label for="new-type">Type:</label>
-                <select id="new-type" bind:value={newNodeData.type}>
+                <select id="new-type" bind:value={newNodeData.source_type}>
                     <optgroup label="Energy Sources">
                         <option value="solar">Solar Farm</option>
                         <option value="wind">Wind Farm</option>
